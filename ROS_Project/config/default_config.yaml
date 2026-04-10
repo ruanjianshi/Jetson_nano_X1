@@ -1,0 +1,36 @@
+# GPIO Control Configuration
+gpio_control:
+  gpio_pins: [18, 19, 21, 22]
+  pin_direction: out
+
+# Serial Communication Configuration
+serial_comm:
+  serial_port: /dev/ttyUSB0
+  baud_rate: 115200
+
+# Network Communication Configuration
+network_comm:
+  server_ip: 0.0.0.0
+  server_port: 5000
+
+# Camera Configuration
+camera:
+  camera_id: 0
+  width: 640
+  height: 480
+  fps: 30
+
+# OpenCV Processing Configuration
+opencv:
+  canny_threshold1: 50
+  canny_threshold2: 150
+
+# Reinforcement Learning Configuration
+rl:
+  state_size: 4
+  action_size: 2
+  learning_rate: 0.01
+  gamma: 0.99
+  epsilon: 0.1
+  num_episodes: 1000
+  save_interval: 100

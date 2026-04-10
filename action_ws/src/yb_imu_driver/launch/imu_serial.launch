@@ -1,0 +1,11 @@
+<launch>
+  <arg name="serial_port" default="/dev/ttyUSB0" doc="串口设备路径"/>
+  <arg name="report_rate" default="50" doc="IMU采样频率(Hz)"/>
+  <arg name="debug" default="false" doc="是否打印调试信息"/>
+
+  <node name="imu_serial_server" pkg="yb_imu_driver" type="imu_serial_server.py" output="screen">
+    <param name="serial_port" value="$(arg serial_port)"/>
+    <param name="report_rate" value="$(arg report_rate)"/>
+    <param name="debug" value="$(arg debug)"/>
+  </node>
+</launch>

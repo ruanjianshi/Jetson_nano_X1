@@ -1,0 +1,22 @@
+<launch>
+  <arg name="use_rviz" default="true" doc="是否启动RViz可视化"/>
+  <arg name="rviz_config" default="$(find yb_imu_driver)/rviz/imu_visualization.rviz" doc="RViz配置文件路径"/>
+
+  <arg name="serial_port" default="/dev/ttyUSB0" doc="串口设备路径"/>
+  <arg name="report_rate" default="50" doc="IMU采样频率(Hz)"/>
+  <arg name="publish_topic" default="true" doc="是否启用实时Topic发布"/>
+  <arg name="realtime_publish_rate" default="50.0" doc="实时Topic发布频率(Hz)"/>
+  <arg name="frame_id" default="imu_link" doc="IMU坐标系ID"/>
+  <arg name="debug" default="false" doc="是否打印调试信息"/>
+
+  <node name="imu_serial_server" pkg="yb_imu_driver" type="imu_serial_server.py" output="screen">
+    <param name="serial_port" value="$(arg serial_port)"/>
+    <param name="report_rate" value="$(arg report_rate)"/>
+    <param name="publish_topic" value="$(arg publish_topic)"/>
+    <param name="realtime_publish_rate" value="$(arg realtime_publish_rate)"/>
+    <param name="frame_id" value="$(arg frame_id)"/>
+    <param name="debug" value="$(arg debug)"/>
+  </node>
+
+  <node if="$(arg use_rviz)" name="rviz" pkg="rviz" type="rviz" args="-d $(arg rviz_config)" required="false"/>
+</launch>

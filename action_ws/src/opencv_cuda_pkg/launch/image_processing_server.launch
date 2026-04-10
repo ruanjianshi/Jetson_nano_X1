@@ -1,0 +1,11 @@
+<launch>
+  <!-- Image Processing Server -->
+  <env name="PYTHONNOUSERSITE" value="1"/>
+  <env name="PYTHONPATH" value="/opt/ros/noetic/lib/python3/dist-packages:$(env PYTHONPATH)"/>
+  <env name="OMP_NUM_THREADS" value="1"/>
+  <env name="MKL_NUM_THREADS" value="1"/>
+  <env name="OPENBLAS_NUM_THREADS" value="1"/>
+  <env name="NUMEXPR_NUM_THREADS" value="1"/>
+  <env name="VECLIB_MAXIMUM_THREADS" value="1"/>
+  <node name="image_processing_server" pkg="opencv_cuda_pkg" type="image_processing_server.py" output="screen"/>
+</launch>

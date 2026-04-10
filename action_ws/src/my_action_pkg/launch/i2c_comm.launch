@@ -1,0 +1,7 @@
+<launch>
+  <node name="i2c_comm_server" pkg="my_action_pkg" type="i2c_comm_server.py" output="screen">
+    <param name="i2c_bus" value="1" />
+    <param name="enable_scan" value="false" />
+    <param name="enable_echo" value="true" />
+  </node>
+</launch>

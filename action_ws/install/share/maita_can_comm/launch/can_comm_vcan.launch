@@ -1,0 +1,11 @@
+<launch>
+  <!-- 使用虚拟 CAN 接口进行测试 -->
+  <arg name="interface" default="socketcan" doc="CAN接口类型"/>
+  <arg name="channel" default="vcan0" doc="CAN通道"/>
+
+  <node name="can_comm_server" pkg="maita_can_comm" type="can_comm_server.py" output="screen" required="true">
+    <param name="interface" value="$(arg interface)"/>
+    <param name="channel" value="$(arg channel)"/>
+    <param name="bitrate" value="500000"/>
+  </node>
+</launch>

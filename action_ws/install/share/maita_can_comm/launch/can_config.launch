@@ -1,0 +1,3 @@
+<launch>
+  <node name="can_config_server" pkg="maita_can_comm" type="can_config_server.py" output="screen" required="true"/>
+</launch>

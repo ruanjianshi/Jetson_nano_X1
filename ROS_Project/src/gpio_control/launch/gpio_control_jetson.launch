@@ -1,0 +1,14 @@
+<launch>
+  <!-- GPIO控制节点 - Jetson专用版本 -->
+  
+  <arg name="gpio_pins" default="[18, 19, 21, 22, 23, 24, 29]" />
+  <arg name="pin_direction" default="out" />
+  
+  <node pkg="gpio_control" type="gpio_control_node_jetson.py" name="gpio_control_node" output="screen">
+    <param name="gpio_pins" value="$(arg gpio_pins)" />
+    <param name="pin_direction" value="$(arg pin_direction)" />
+    <!-- 直接使用字符串模式，避免常量传递问题 -->
+    <param name="gpio_mode" value="BOARD" />
+  </node>
+  
+</launch>

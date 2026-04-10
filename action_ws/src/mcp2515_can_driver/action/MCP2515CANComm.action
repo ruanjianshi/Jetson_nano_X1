@@ -1,0 +1,16 @@
+# goal definition
+uint32 can_id                  # CAN ID (11-bit standard or 29-bit extended)
+uint8 dlc                      # Data Length Code (0-8)
+uint8[8] data                  # CAN data (up to 8 bytes)
+bool extended                  # Extended ID flag (true=29-bit, false=11-bit)
+bool remote                    # Remote frame flag
+---
+# result definition
+bool success                   # Operation success
+string message                 # Status message
+uint8[8] received_data         # Received CAN data
+uint32 received_id              # Received CAN ID
+uint8 received_dlc             # Received DLC
+---
+# feedback definition
+string status                  # Status description

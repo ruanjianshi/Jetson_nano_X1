@@ -1,0 +1,18 @@
+<launch>
+  <!-- SPI通信节点启动文件 -->
+  
+  <arg name="spi_device" default="/dev/spidev0.0" doc="SPI设备路径" />
+  <arg name="spi_mode" default="0" doc="SPI模式 (0-3)" />
+  <arg name="max_speed" default="1000000" doc="最大速度 (Hz)" />
+  <arg name="bits_per_word" default="8" doc="每字位数" />
+  <arg name="enable_echo" default="false" doc="启用数据回显" />
+  
+  <node name="spi_comm_node" pkg="communication" type="spi_comm_node.py" output="screen">
+    <param name="spi_device" value="$(arg spi_device)" />
+    <param name="spi_mode" value="$(arg spi_mode)" />
+    <param name="max_speed" value="$(arg max_speed)" />
+    <param name="bits_per_word" value="$(arg bits_per_word)" />
+    <param name="enable_echo" value="$(arg enable_echo)" />
+  </node>
+  
+</launch>

@@ -1,0 +1,34 @@
+# ROS
+action_ws/devel/
+action_ws/build/
+ROS_Project/devel/
+ROS_Project/build/
+*.pyc
+__pycache__/
+*.log
+
+# CMake
+ThreadPoolProject/build/
+ThreadPoolProject/cmake_install.cmake
+ThreadPoolProject/Makefile
+ThreadPoolProject/CMakeFiles/
+ThreadPoolProject/CMakeCache.txt
+
+# OS
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Data
+*.dtb
+*.dts
+data/*
+!data/.gitkeep
+
+# Python
+*.egg-info/
+dist/
+build/
+venv/
+.venv/

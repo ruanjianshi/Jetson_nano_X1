@@ -1,0 +1,28 @@
+# 脉塔智能 USB转CAN模块V4 配置文件
+
+# CAN 接口配置
+interface: socketcan
+channel: can0
+bustype: socketcan
+bitrate: 500000
+
+# 通道配置
+channel0:
+  enabled: true
+  bitrate: 500000
+  loopback: false
+  timestamp: true
+
+channel1:
+  enabled: false
+  bitrate: 500000
+  loopback: false
+  timestamp: true
+
+# 过滤器配置
+filters:
+  - channel: 0
+    can_id: 0x123
+    can_id_mask: 0x7FF
+    extended: false
+    enabled: false

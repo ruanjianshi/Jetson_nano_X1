@@ -1,0 +1,11 @@
+<launch>
+  <arg name="interface" default="slcan" doc="CAN接口类型: slcan, socketcan, serial"/>
+  <arg name="channel" default="/dev/ttyUSB0" doc="CAN通道/设备路径"/>
+  <arg name="bitrate" default="500000" doc="波特率"/>
+
+  <node name="can_comm_server" pkg="maita_can_comm" type="can_comm_server.py" output="screen" required="true">
+    <param name="interface" value="$(arg interface)"/>
+    <param name="channel" value="$(arg channel)"/>
+    <param name="bitrate" value="$(arg bitrate)"/>
+  </node>
+</launch>

@@ -1,0 +1,9 @@
+# goal definition
+std_msgs/String data
+---
+# result definition
+std_msgs/String received_data
+bool success
+---
+# feedback definition
+std_msgs/String partial_data

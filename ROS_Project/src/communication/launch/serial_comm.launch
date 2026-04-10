@@ -1,0 +1,20 @@
+<launch>
+  <!-- 串口通信节点启动文件 -->
+  
+  <arg name="serial_port" default="/dev/ttyTHS1" doc="串口端口，默认/dev/ttyTHS1 (8号和10号引脚)" />
+  <arg name="baud_rate" default="115200" doc="波特率" />
+  <arg name="timeout" default="1.0" doc="超时时间(秒)" />
+  <arg name="auto_reconnect" default="true" doc="自动重连" />
+  <arg name="reconnect_interval" default="2.0" doc="重连间隔(秒)" />
+  <arg name="enable_echo" default="false" doc="启用数据回显" />
+  
+  <node name="serial_comm_node" pkg="communication" type="serial_comm_node.py" output="screen">
+    <param name="serial_port" value="$(arg serial_port)" />
+    <param name="baud_rate" value="$(arg baud_rate)" />
+    <param name="timeout" value="$(arg timeout)" />
+    <param name="auto_reconnect" value="$(arg auto_reconnect)" />
+    <param name="reconnect_interval" value="$(arg reconnect_interval)" />
+    <param name="enable_echo" value="$(arg enable_echo)" />
+  </node>
+  
+</launch>

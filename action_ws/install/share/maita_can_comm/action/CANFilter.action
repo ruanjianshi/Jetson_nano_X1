@@ -1,0 +1,14 @@
+# goal definition
+uint32 channel          # CAN通道
+uint32 can_id           # CAN帧ID
+uint32 can_id_mask      # CAN帧ID掩码
+bool enable             # 启用过滤
+bool extended           # 扩展帧过滤
+---
+# result definition
+bool success            # 过滤器配置是否成功
+string message          # 结果消息
+uint8 filter_index      # 过滤器索引
+---
+# feedback definition
+string status           # 过滤器状态

@@ -1,0 +1,64 @@
+# goal definition
+# 操作类型: 0=读取单次数据, 1=连续读取, 2=校准IMU, 3=校准磁力计, 4=校准温度, 5=设置融合算法
+uint8 operation_type
+# 连续读取时长(秒), 仅当operation_type=1时有效
+float64 duration
+# 融合算法类型: 6或9, 仅当operation_type=5时有效
+uint8 algorithm_type
+# 校准温度值, 仅当operation_type=4时有效
+float32 calibration_temperature
+# 校准类型: 0=自动(陀螺仪+加速度计), 1=陀螺仪, 2=加速度计, 仅当operation_type=2时有效
+uint8 calibration_type
+---
+# result definition
+# 传感器数据
+float32 accel_x
+float32 accel_y
+float32 accel_z
+float32 gyro_x
+float32 gyro_y
+float32 gyro_z
+float32 mag_x
+float32 mag_y
+float32 mag_z
+# 姿态数据(四元数)
+float32 quat_w
+float32 quat_x
+float32 quat_y
+float32 quat_z
+# 姿态数据(欧拉角, 弧度)
+float32 roll
+float32 pitch
+float32 yaw
+# 气压计数据
+float32 height
+float32 temperature
+float32 pressure
+float32 pressure_contrast
+# 操作结果
+bool success
+string message
+---
+# feedback definition
+# 当前传感器数据(用于连续读取时的实时反馈)
+float32 accel_x
+float32 accel_y
+float32 accel_z
+float32 gyro_x
+float32 gyro_y
+float32 gyro_z
+float32 mag_x
+float32 mag_y
+float32 mag_z
+# 当前姿态数据
+float32 quat_w
+float32 quat_x
+float32 quat_y
+float32 quat_z
+float32 roll
+float32 pitch
+float32 yaw
+# 进度百分比(0-100)
+uint8 progress
+# 状态信息
+string status

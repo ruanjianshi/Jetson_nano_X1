@@ -1,0 +1,16 @@
+<launch>
+  <!-- I2C通信节点启动文件 -->
+  
+  <arg name="i2c_bus" default="1" doc="I2C总线号 (I2C-1为1, I2C-2为2)" />
+  <arg name="device_address" default="0x48" doc="I2C设备地址 (16进制)" />
+  <arg name="auto_scan" default="false" doc="自动扫描I2C设备" />
+  <arg name="enable_echo" default="false" doc="启用数据回显" />
+  
+  <node name="i2c_comm_node" pkg="communication" type="i2c_comm_node.py" output="screen">
+    <param name="i2c_bus" value="$(arg i2c_bus)" />
+    <param name="device_address" value="$(arg device_address)" />
+    <param name="auto_scan" value="$(arg auto_scan)" />
+    <param name="enable_echo" value="$(arg enable_echo)" />
+  </node>
+  
+</launch>

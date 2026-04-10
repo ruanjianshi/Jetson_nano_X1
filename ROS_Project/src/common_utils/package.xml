@@ -1,0 +1,14 @@
+<package format="2">
+  <name>common_utils</name>
+  <version>1.0.0</version>
+  <description>Common utilities module with C++ and Python support</description>
+  <maintainer email="developer@example.com">Jetson Nano Developer</maintainer>
+  <license>MIT</license>
+  
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>rospy</build_depend>
+  <exec_depend>rospy</exec_depend>
+  
+  <export>
+  </export>
+</package>

@@ -1,0 +1,20 @@
+<launch>
+  <arg name="spi_bus" default="0" doc="SPI 总线编号 (0=SPI0, 1=SPI1)"/>
+  <arg name="spi_device" default="0" doc="SPI 设备编号 (0=CE0, 1=CE1)"/>
+  <arg name="bitrate" default="800000" doc="CAN 波特率 (125000, 250000, 500000, 800000)"/>
+  <arg name="sampling_point" default="80" doc="采样点百分比 (70, 80)"/>
+  <arg name="enable_rx_thread" default="true" doc="是否启用接收线程"/>
+  <arg name="enable_echo" default="true" doc="是否打印收发日志"/>
+  <arg name="loopback_test" default="false" doc="是否运行回环测试"/>
+    
+  <node name="mcp2515_can_server_cpp" pkg="mcp2515_can_driver" type="mcp2515_can_server_cpp" 
+        output="screen" required="true">
+    <param name="spi_bus" value="$(arg spi_bus)"/>
+    <param name="spi_device" value="$(arg spi_device)"/>
+    <param name="bitrate" value="$(arg bitrate)"/>
+    <param name="sampling_point" value="$(arg sampling_point)"/>
+    <param name="enable_rx_thread" value="$(arg enable_rx_thread)"/>
+    <param name="enable_echo" value="$(arg enable_echo)"/>
+    <param name="loopback_test" value="$(arg loopback_test)"/>
+  </node>
+</launch>

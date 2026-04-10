@@ -1,0 +1,8 @@
+prefix=/home/jetson/Desktop/Jetson_Nano/action_ws/install
+
+Name: my_action_pkg
+Description: Description of my_action_pkg
+Version: 0.0.0
+Cflags: -I${prefix}/include
+Libs: -L${prefix}/lib 
+Requires: actionlib actionlib_msgs roscpp rospy std_msgs

@@ -1,0 +1,70 @@
+# GPIO控制模块配置文件 - Jetson Nano B01专用版本
+
+gpio_control:
+  # GPIO引脚配置 - 基于实际测试结果
+  gpio_pins: [18, 19, 21, 22, 23, 24, 29]  # 仅使用测试验证可用的引脚
+  
+  # 引脚方向配置: 'in' 或 'out'
+  pin_direction: 'out'
+  
+  # 脉冲时间（毫秒）
+  pulse_delay: 50
+  
+  # 读取频率（Hz）
+  read_frequency: 10
+  
+  # 失败重试次数
+  retry_count: 3
+
+# GPIO映射配置 - 基于Jetson Nano B01实际可用性
+gpio_mapping:
+  18: "GPIO18_PWM_Control"
+  19: "GPIO19_PWM_Control"
+  21: "GPIO21_I2C_SDA"     # 如果不使用I2C可用
+  22: "GPIO22_I2C_SCL"     # 如果不使用I2C可用
+  23: "GPIO23_SPI_SCLK"    # 如果不使用SPI可用
+  24: "GPIO24_SPI_MISO"    # 如果不使用SPI可用
+  29: "GPIO29_UART_RX"     # 如果不使用UART可用
+
+# GPIO引脚限制和说明
+gpio_constraints:
+  available_pins: [18, 19, 21, 22, 23, 24, 29]
+  
+  # 可用但有限制的引脚
+  pwm_capable: [18, 19]           # 支持PWM输出
+  input_capable: [18, 19, 21, 22, 23, 24, 29]
+  output_capable: [18, 19, 21, 22, 23, 24, 29]
+  
+  # 引脚冲突警告
+  conflicts:
+    i2c: [21, 22]     # 如果使用I2C设备，避免这些引脚
+    spi: [23, 24, 27] # 如果使用SPI设备，避免这些引脚
+    uart: [28, 29]    # 如果使用UART设备，避免这些引脚
+  
+  # 不可用引脚（测试验证）
+  unavailable_pins: [27, 28, 30]
+
+# Jetson.GPIO特定配置
+jetson_gpio:
+  gpio_mode: "BOARD"            # BOARD, BCM, 或 TEGRA_SOC
+  library_version: "2.0.17"     # Jetson.GPIO版本
+  warning_suppression: false    # 是否抑制警告
+
+# 安全配置
+safety:
+  max_current: 20               # 最大电流限制 (mA)
+  use_protection: true          # 使用保护电路
+  enable_watchdog: true         # 启用看门狗
+  
+  # 引脚使用建议
+  recommendations:
+    high_speed_output: [18, 19] # 高速输出推荐
+    general_io: [21, 22, 23, 24] # 通用I/O推荐
+    sensor_input: [29]          # 传感器输入推荐
+    
+  # 硬件连接建议
+  hardware_tips:
+    output_pins: "串联220Ω电阻限流"
+    input_pins: "配置上拉/下拉电阻"
+    power_devices: "使用继电器驱动"
+    noise_sensitive: "使用光耦隔离"

@@ -1,0 +1,13 @@
+# goal definition
+uint8 spi_bus              # SPI 总线编号 (0, 1, 2)
+uint8 device_address       # 设备地址 (片选线编号)
+uint8 write_data           # 要写入的数据 (1字节)
+bool read_after_write      # 写入后是否读取
+---
+# result definition
+bool success               # 操作是否成功
+uint8 received_data        # 接收到的数据
+---
+# feedback definition
+std_msgs/String status    # 状态描述
+uint8 current_data         # 当前数据

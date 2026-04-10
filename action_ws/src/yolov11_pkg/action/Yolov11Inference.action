@@ -1,0 +1,20 @@
+# Goal
+string model_path              # 模型文件路径（可选，默认使用包内模型）
+string input_type             # 输入类型: 'topic', 'image_file', 'camera', 'video_file'
+string input_source           # 输入源: 话题名、文件路径、摄像头索引（如 0）、视频文件路径
+float64 confidence_threshold  # 置信度阈值（可选，默认 0.5）
+float64 iou_threshold        # IOU阈值（可选，默认 0.45）
+string device                # 设备: 'cuda:0' 或 'cpu'（可选）
+string save_image_path        # 保存推理结果图片的路径（可选）
+---
+# Result
+int32 num_detections        # 检测到的目标数量
+float64 inference_time      # 推理时间（秒）
+DetectionResult[] detections # 检测结果列表
+int32 frames_processed      # 处理的帧数（视频/摄像头模式下）
+float64 avg_inference_time  # 平均推理时间
+---
+# Feedback
+int32 frame_count   # 已处理的帧数
+float64 fps         # 当前帧率
+string status       # 状态信息

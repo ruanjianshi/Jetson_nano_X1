@@ -1,0 +1,12 @@
+build/
+logs/
+*.log
+*.o
+multithread_test
+threadpool
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+*~

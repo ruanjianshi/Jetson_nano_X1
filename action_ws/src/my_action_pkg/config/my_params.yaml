@@ -1,0 +1,16 @@
+fibonacci_client:
+  order: 8
+fibonacci_server:
+  default_order: 8
+  delay: 0.5
+rosdistro: 'noetic
+
+  '
+roslaunch:
+  uris:
+    host_nano__32897: http://nano:32897/
+    host_nano__38651: http://nano:38651/
+rosversion: '1.17.4
+
+  '
+run_id: 36cbfb50-2c06-11f1-a3f6-d5ac38223a2a

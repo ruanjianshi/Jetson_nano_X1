@@ -1,0 +1,22 @@
+# Goal
+string input_type              # 输入类型: 'topic', 'image_file', 'camera', 'video_file'
+string input_source            # 输入源: 话题名、文件路径、摄像头索引、视频文件路径
+string detection_method       # 检测方法: 'haar_cascade', 'hog', 'dnn'
+string model_path             # 模型路径（用于 DNN）
+string cascade_path           # Haar Cascade 路径（用于 Haar）
+float64 confidence_threshold  # 置信度阈值
+float64 nms_threshold         # NMS 阈值
+bool use_cuda                 # 是否使用 CUDA 加速
+bool publish_processed        # 是否发布处理后的图像
+---
+# Result
+int32 num_detections          # 检测到的目标数量
+float64 inference_time        # 推理时间（秒）
+DetectionResult[] detections  # 检测结果列表
+int32 frames_processed        # 处理的帧数（视频/摄像头模式下）
+float64 avg_inference_time    # 平均推理时间
+---
+# Feedback
+int32 frame_count             # 已处理的帧数
+float64 fps                   # 当前帧率
+string status                 # 状态信息

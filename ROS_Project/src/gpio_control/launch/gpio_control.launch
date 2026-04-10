@@ -1,0 +1,10 @@
+<launch>
+  <arg name="gpio_pins" default="[21, 22, 23, 24, 27, 28, 29, 30]" />
+  <arg name="pin_direction" default="out" />
+  
+  <node pkg="gpio_control" type="gpio_control_node.py" name="gpio_control_node" output="screen">
+    <param name="gpio_pins" value="$(arg gpio_pins)" />
+    <param name="pin_direction" value="$(arg pin_direction)" />
+  </node>
+  
+</launch>

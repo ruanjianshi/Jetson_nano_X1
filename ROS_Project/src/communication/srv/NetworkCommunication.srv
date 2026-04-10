@@ -1,0 +1,6 @@
+string server_ip
+int32 server_port
+string message
+---
+bool success
+string response

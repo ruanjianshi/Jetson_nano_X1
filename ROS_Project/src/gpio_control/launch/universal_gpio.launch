@@ -1,0 +1,14 @@
+<launch>
+  <!-- 通用GPIO控制节点启动文件 -->
+  
+  <!-- GPIO引脚配置 - 可通过命令行参数覆盖 -->
+  <arg name="gpio_pins" default="[18, 19, 31, 32, 33, 35, 36, 37, 38, 40]" />
+  <arg name="default_direction" default="out" />
+  
+  <node pkg="gpio_control" type="universal_gpio_control_node.py" name="gpio_control_node" output="screen">
+    <param name="gpio_pins" value="$(arg gpio_pins)" />
+    <param name="default_direction" value="$(arg default_direction)" />
+    <param name="gpio_mode" value="BOARD" />
+  </node>
+  
+</launch>

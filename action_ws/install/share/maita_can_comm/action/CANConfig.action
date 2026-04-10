@@ -1,0 +1,13 @@
+# goal definition
+uint32 channel          # CAN通道 (0=CAN0, 1=CAN1)
+uint32 baudrate         # 波特率 (如: 500000)
+bool enable_loopback    # 启用回环模式
+bool enable_timestamp   # 启用时间戳
+---
+# result definition
+bool success            # 配置是否成功
+string message          # 结果消息
+uint32 actual_baudrate  # 实际波特率
+---
+# feedback definition
+string status           # 配置进度

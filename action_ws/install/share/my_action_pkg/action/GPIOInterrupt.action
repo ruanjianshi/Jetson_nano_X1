@@ -1,0 +1,13 @@
+# goal definition
+uint8 pin_number           # GPIO 引脚号 (BCM 编号)
+uint8 edge_mode            # 边沿模式: 0=上升沿, 1=下降沿, 2=双边沿
+uint8 debounce_ms          # 去抖动时间 (毫秒)
+---
+# result definition
+bool success               # 操作是否成功
+uint32 interrupt_count     # 检测到的中断次数
+---
+# feedback definition
+std_msgs/String event_type    # 事件类型: "rising", "falling", "level"
+uint64 timestamp              # 时间戳 (ns)
+uint8 pin_level               # GPIO 电平: 0=LOW, 1=HIGH

@@ -1,0 +1,9 @@
+<launch>
+  <arg name="i2c_port" default="7" doc="I2C总线端口号"/>
+  <arg name="debug" default="false" doc="是否打印调试信息"/>
+
+  <node name="imu_i2c_server" pkg="yb_imu_driver" type="imu_i2c_server.py" output="screen">
+    <param name="i2c_port" value="$(arg i2c_port)"/>
+    <param name="debug" value="$(arg debug)"/>
+  </node>
+</launch>

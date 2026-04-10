@@ -1,0 +1,41 @@
+<launch>
+  <arg name="gpio_pins" default="[18, 19, 21, 22]" />
+  <arg name="serial_port" default="/dev/ttyUSB0" />
+  <arg name="baud_rate" default="115200" />
+  <arg name="camera_id" default="0" />
+  
+  <!-- GPIO Control Node (C++) -->
+  <node pkg="gpio_control" type="gpio_control_node" name="gpio_control_node" output="screen">
+    <param name="gpio_pins" value="$(arg gpio_pins)" />
+  </node>
+  
+  <!-- Serial Communication Node (C++) -->
+  <node pkg="communication" type="serial_comm_node" name="serial_comm_node" output="screen">
+    <param name="serial_port" value="$(arg serial_port)" />
+    <param name="baud_rate" value="$(arg baud_rate)" />
+  </node>
+  
+  <!-- Network Communication Node (C++) -->
+  <node pkg="communication" type="network_comm_node" name="network_comm_node" output="screen" />
+  
+  <!-- Camera Node (Python) -->
+  <node pkg="opencv_processing" type="camera_node.py" name="camera_node" output="screen">
+    <param name="camera_id" value="$(arg camera_id)" />
+  </node>
+  
+  <!-- Image Processor Node (Python) -->
+  <node pkg="opencv_processing" type="image_processor_node.py" name="image_processor_node" output="screen" />
+  
+  <!-- RL Environment Node (Python) -->
+  <node pkg="reinforcement_learning" type="rl_environment_node.py" name="rl_environment_node" output="screen" />
+  
+  <!-- RL Agent Node (Python) -->
+  <node pkg="reinforcement_learning" type="rl_agent_node.py" name="rl_agent_node" output="screen" />
+  
+  <!-- RL Trainer Node (Python) -->
+  <node pkg="reinforcement_learning" type="rl_trainer_node.py" name="rl_trainer_node" output="screen" />
+  
+  <!-- Main GUI Node (Python) -->
+  <node pkg="qt5_gui" type="main_gui_node.py" name="main_gui_node" output="screen" />
+  
+</launch>

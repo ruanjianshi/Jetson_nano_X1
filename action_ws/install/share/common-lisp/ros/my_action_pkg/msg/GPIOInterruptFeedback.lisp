@@ -1,0 +1,106 @@
+; Auto-generated. Do not edit!
+
+
+(cl:in-package my_action_pkg-msg)
+
+
+;//! \htmlinclude GPIOInterruptFeedback.msg.html
+
+(cl:defclass <GPIOInterruptFeedback> (roslisp-msg-protocol:ros-message)
+  ((event_type
+    :reader event_type
+    :initarg :event_type
+    :type std_msgs-msg:String
+    :initform (cl:make-instance 'std_msgs-msg:String))
+   (timestamp
+    :reader timestamp
+    :initarg :timestamp
+    :type cl:integer
+    :initform 0)
+   (pin_level
+    :reader pin_level
+    :initarg :pin_level
+    :type cl:fixnum
+    :initform 0))
+)
+
+(cl:defclass GPIOInterruptFeedback (<GPIOInterruptFeedback>)
+  ())
+
+(cl:defmethod cl:initialize-instance :after ((m <GPIOInterruptFeedback>) cl:&rest args)
+  (cl:declare (cl:ignorable args))
+  (cl:unless (cl:typep m 'GPIOInterruptFeedback)
+    (roslisp-msg-protocol:msg-deprecation-warning "using old message class name my_action_pkg-msg:<GPIOInterruptFeedback> is deprecated: use my_action_pkg-msg:GPIOInterruptFeedback instead.")))
+
+(cl:ensure-generic-function 'event_type-val :lambda-list '(m))
+(cl:defmethod event_type-val ((m <GPIOInterruptFeedback>))
+  (roslisp-msg-protocol:msg-deprecation-warning "Using old-style slot reader my_action_pkg-msg:event_type-val is deprecated.  Use my_action_pkg-msg:event_type instead.")
+  (event_type m))
+
+(cl:ensure-generic-function 'timestamp-val :lambda-list '(m))
+(cl:defmethod timestamp-val ((m <GPIOInterruptFeedback>))
+  (roslisp-msg-protocol:msg-deprecation-warning "Using old-style slot reader my_action_pkg-msg:timestamp-val is deprecated.  Use my_action_pkg-msg:timestamp instead.")
+  (timestamp m))
+
+(cl:ensure-generic-function 'pin_level-val :lambda-list '(m))
+(cl:defmethod pin_level-val ((m <GPIOInterruptFeedback>))
+  (roslisp-msg-protocol:msg-deprecation-warning "Using old-style slot reader my_action_pkg-msg:pin_level-val is deprecated.  Use my_action_pkg-msg:pin_level instead.")
+  (pin_level m))
+(cl:defmethod roslisp-msg-protocol:serialize ((msg <GPIOInterruptFeedback>) ostream)
+  "Serializes a message object of type '<GPIOInterruptFeedback>"
+  (roslisp-msg-protocol:serialize (cl:slot-value msg 'event_type) ostream)
+  (cl:write-byte (cl:ldb (cl:byte 8 0) (cl:slot-value msg 'timestamp)) ostream)
+  (cl:write-byte (cl:ldb (cl:byte 8 8) (cl:slot-value msg 'timestamp)) ostream)
+  (cl:write-byte (cl:ldb (cl:byte 8 16) (cl:slot-value msg 'timestamp)) ostream)
+  (cl:write-byte (cl:ldb (cl:byte 8 24) (cl:slot-value msg 'timestamp)) ostream)
+  (cl:write-byte (cl:ldb (cl:byte 8 32) (cl:slot-value msg 'timestamp)) ostream)
+  (cl:write-byte (cl:ldb (cl:byte 8 40) (cl:slot-value msg 'timestamp)) ostream)
+  (cl:write-byte (cl:ldb (cl:byte 8 48) (cl:slot-value msg 'timestamp)) ostream)
+  (cl:write-byte (cl:ldb (cl:byte 8 56) (cl:slot-value msg 'timestamp)) ostream)
+  (cl:write-byte (cl:ldb (cl:byte 8 0) (cl:slot-value msg 'pin_level)) ostream)
+)
+(cl:defmethod roslisp-msg-protocol:deserialize ((msg <GPIOInterruptFeedback>) istream)
+  "Deserializes a message object of type '<GPIOInterruptFeedback>"
+  (roslisp-msg-protocol:deserialize (cl:slot-value msg 'event_type) istream)
+    (cl:setf (cl:ldb (cl:byte 8 0) (cl:slot-value msg 'timestamp)) (cl:read-byte istream))
+    (cl:setf (cl:ldb (cl:byte 8 8) (cl:slot-value msg 'timestamp)) (cl:read-byte istream))
+    (cl:setf (cl:ldb (cl:byte 8 16) (cl:slot-value msg 'timestamp)) (cl:read-byte istream))
+    (cl:setf (cl:ldb (cl:byte 8 24) (cl:slot-value msg 'timestamp)) (cl:read-byte istream))
+    (cl:setf (cl:ldb (cl:byte 8 32) (cl:slot-value msg 'timestamp)) (cl:read-byte istream))
+    (cl:setf (cl:ldb (cl:byte 8 40) (cl:slot-value msg 'timestamp)) (cl:read-byte istream))
+    (cl:setf (cl:ldb (cl:byte 8 48) (cl:slot-value msg 'timestamp)) (cl:read-byte istream))
+    (cl:setf (cl:ldb (cl:byte 8 56) (cl:slot-value msg 'timestamp)) (cl:read-byte istream))
+    (cl:setf (cl:ldb (cl:byte 8 0) (cl:slot-value msg 'pin_level)) (cl:read-byte istream))
+  msg
+)
+(cl:defmethod roslisp-msg-protocol:ros-datatype ((msg (cl:eql '<GPIOInterruptFeedback>)))
+  "Returns string type for a message object of type '<GPIOInterruptFeedback>"
+  "my_action_pkg/GPIOInterruptFeedback")
+(cl:defmethod roslisp-msg-protocol:ros-datatype ((msg (cl:eql 'GPIOInterruptFeedback)))
+  "Returns string type for a message object of type 'GPIOInterruptFeedback"
+  "my_action_pkg/GPIOInterruptFeedback")
+(cl:defmethod roslisp-msg-protocol:md5sum ((type (cl:eql '<GPIOInterruptFeedback>)))
+  "Returns md5sum for a message object of type '<GPIOInterruptFeedback>"
+  "64e9176140a86f6f71cf8f42175b763f")
+(cl:defmethod roslisp-msg-protocol:md5sum ((type (cl:eql 'GPIOInterruptFeedback)))
+  "Returns md5sum for a message object of type 'GPIOInterruptFeedback"
+  "64e9176140a86f6f71cf8f42175b763f")
+(cl:defmethod roslisp-msg-protocol:message-definition ((type (cl:eql '<GPIOInterruptFeedback>)))
+  "Returns full string definition for message of type '<GPIOInterruptFeedback>"
+  (cl:format cl:nil "# ====== DO NOT MODIFY! AUTOGENERATED FROM AN ACTION DEFINITION ======~%# feedback definition~%std_msgs/String event_type    # 事件类型: \"rising\", \"falling\", \"level\"~%uint64 timestamp              # 时间戳 (ns)~%uint8 pin_level               # GPIO 电平: 0=LOW, 1=HIGH~%~%================================================================================~%MSG: std_msgs/String~%string data~%~%~%"))
+(cl:defmethod roslisp-msg-protocol:message-definition ((type (cl:eql 'GPIOInterruptFeedback)))
+  "Returns full string definition for message of type 'GPIOInterruptFeedback"
+  (cl:format cl:nil "# ====== DO NOT MODIFY! AUTOGENERATED FROM AN ACTION DEFINITION ======~%# feedback definition~%std_msgs/String event_type    # 事件类型: \"rising\", \"falling\", \"level\"~%uint64 timestamp              # 时间戳 (ns)~%uint8 pin_level               # GPIO 电平: 0=LOW, 1=HIGH~%~%================================================================================~%MSG: std_msgs/String~%string data~%~%~%"))
+(cl:defmethod roslisp-msg-protocol:serialization-length ((msg <GPIOInterruptFeedback>))
+  (cl:+ 0
+     (roslisp-msg-protocol:serialization-length (cl:slot-value msg 'event_type))
+     8
+     1
+))
+(cl:defmethod roslisp-msg-protocol:ros-message-to-list ((msg <GPIOInterruptFeedback>))
+  "Converts a ROS message object to a list"
+  (cl:list 'GPIOInterruptFeedback
+    (cl:cons ':event_type (event_type msg))
+    (cl:cons ':timestamp (timestamp msg))
+    (cl:cons ':pin_level (pin_level msg))
+))

@@ -1,0 +1,18 @@
+# Goal
+string input_type              # 输入类型: 'topic', 'image_file', 'camera', 'video_file'
+string input_source            # 输入源: 话题名、文件路径、摄像头索引、视频文件路径
+string operation               # 操作类型: 'resize', 'crop', 'rotate', 'blur', 'gaussian_blur', 'canny', 'threshold', 'color_convert'
+string params                  # JSON格式的操作参数
+bool use_cuda                 # 是否使用CUDA加速
+bool publish_processed        # 是否发布处理后的图像
+---
+# Result
+bool success                  # 操作是否成功
+string message                # 结果消息
+float64 processing_time       # 处理时间（秒）
+string output_info            # 输出信息
+---
+# Feedback
+int32 frame_count             # 已处理的帧数
+float64 fps                   # 当前帧率
+string status                 # 状态信息

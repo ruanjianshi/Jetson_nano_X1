@@ -1,0 +1,12 @@
+<launch>
+    <!-- 服务器节点 -->
+    <node name="fibonacci_server" pkg="my_action_pkg" type="fibonacci_server.py" output="screen">
+        <param name="delay" value="0.5" />
+        <param name="default_order" value="8" />
+    </node>
+
+    <!-- 客户端节点 -->
+    <node name="fibonacci_client" pkg="my_action_pkg" type="fibonacci_client.py" output="screen">
+        <param name="order" value="12" />
+    </node>
+</launch>

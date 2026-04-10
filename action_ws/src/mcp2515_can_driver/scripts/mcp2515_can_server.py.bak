@@ -1,0 +1,860 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+=======================================
+MCP2515 SPI to CAN Driver
+=======================================
+功能说明:
+  - 基于 MCP2515 SPI转CAN控制器 (Microchip)
+  - 通过 SPI 总线与 MCP2515 通信，实现 CAN 总线数据收发
+  - 支持 ROS Action 接口
+  - 支持标准帧和扩展帧
+  
+硬件连接 (Jetson Nano SPI0):
+  - 引脚 19 (GPIO 10/MOSI0): MOSI 主出从入
+  - 引脚 21 (GPIO 9/MISO0): MISO 主入从出
+  - 引脚 23 (GPIO 11/SCLK0): SCLK 时钟
+  - 引脚 24 (GPIO 8/CE0): CE0 片选
+  - 引脚 29 (GPIO 216): MCP2515 INT 中断输出
+  
+MCP2515 芯片:
+  - SPI 接口的 CAN 控制器 (Microchip)
+  - 支持 CAN 2.0A/2.0B 协议
+  - 最高 1Mbps 波特率
+  
+TJA1050 CAN 收发器:
+  - 高速 CAN 收发器
+  - 支持 1Mbps 波特率
+  
+使用方法:
+  source devel/setup.bash
+  rosrun mcp2515_can_driver mcp2515_can_server.py
+  
+作者: Jetson Nano
+日期: 2026-04-09
+"""
+
+import rospy
+import actionlib
+import spidev
+import threading
+import time
+try:
+    import Jetson.GPIO as GPIO
+    HAS_GPIO = True
+except ImportError:
+    try:
+        import RPi.GPIO as GPIO
+        HAS_GPIO = True
+    except ImportError:
+        HAS_GPIO = False
+        rospy.logwarn("无法导入 GPIO 库，将使用轮询模式")
+from mcp2515_can_driver.msg import (
+    MCP2515CANCommAction,
+    MCP2515CANCommFeedback,
+    MCP2515CANCommResult
+)
+
+MCP2515_SPI_INST = {
+    'RESET': 0xC0,
+    'READ': 0x03,
+    'READ_RX_BUF': 0x90,
+    'READ_RX_BUF_0': 0x92,
+    'READ_RX_BUF_1': 0x94,
+    'WRITE': 0x02,
+    'WRITE_BUF': 0x40,
+    'WRITE_BUF_0': 0x40,
+    'WRITE_BUF_1': 0x42,
+    'RTS': 0x80,
+    'RTS_0': 0x81,
+    'RTS_1': 0x82,
+    'RTS_2': 0x83,
+    'READ_STATUS': 0xA0,
+    'RX_STATUS': 0xB0,
+    'BIT_MODIFY': 0x05,
+}
+
+MCP2515_REG = {
+    'BFPCTRL': 0x0C,
+    'TXRTSCTRL': 0x0D,
+    'CANSTAT': 0x0E,
+    'CANCTRL': 0x0F,
+    'CNF3': 0x28,
+    'CNF2': 0x29,
+    'CNF1': 0x2A,
+    'CANINTE': 0x2B,
+    'CANINTF': 0x2C,
+    'EFLG': 0x2D,
+    'TXB0CTRL': 0x30,
+    'TXB0SIDH': 0x31,
+    'TXB0SIDL': 0x32,
+    'TXB0E8M': 0x33,
+    'TXB0EID0': 0x34,
+    'TXB0DLC': 0x35,
+    'TXB0D0': 0x36,
+    'TXB0D1': 0x37,
+    'TXB0D2': 0x38,
+    'TXB0D3': 0x39,
+    'TXB0D4': 0x3A,
+    'TXB0D5': 0x3B,
+    'TXB0D6': 0x3C,
+    'TXB0D7': 0x3D,
+    'RXB0CTRL': 0x60,
+    'RXB0SIDH': 0x61,
+    'RXB0SIDL': 0x62,
+    'RXB0E8M': 0x63,
+    'RXB0EID0': 0x64,
+    'RXB0DLC': 0x65,
+    'RXB0D0': 0x66,
+    'RXB0D1': 0x67,
+    'RXB0D2': 0x68,
+    'RXB0D3': 0x69,
+    'RXB0D4': 0x6A,
+    'RXB0D5': 0x6B,
+    'RXB0D6': 0x6C,
+    'RXB0D7': 0x6D,
+    'RXB1CTRL': 0x70,
+    'RXB1SIDH': 0x71,
+    'RXB1SIDL': 0x72,
+    'RXB1E8M': 0x73,
+    'RXB1EID0': 0x74,
+    'RXB1DLC': 0x75,
+    'RXB1D0': 0x76,
+    'RXB1D1': 0x77,
+    'RXB1D2': 0x78,
+    'RXB1D3': 0x79,
+    'RXB1D4': 0x7A,
+    'RXB1D5': 0x7B,
+    'RXB1D6': 0x7C,
+    'RXB1D7': 0x7D,
+    'RXF0SIDH': 0x00,
+    'RXF0SIDL': 0x01,
+    'RXF0E8M': 0x02,
+    'RXF0EID0': 0x03,
+    'RXF1SIDH': 0x04,
+    'RXF1SIDL': 0x05,
+    'RXF1E8M': 0x06,
+    'RXF1EID0': 0x07,
+    'RXF2SIDH': 0x08,
+    'RXF2SIDL': 0x09,
+    'RXF2E8M': 0x0A,
+    'RXF2EID0': 0x0B,
+    'RXF3SIDH': 0x10,
+    'RXF3SIDL': 0x11,
+    'RXF3E8M': 0x12,
+    'RXF3EID0': 0x13,
+    'RXF4SIDH': 0x14,
+    'RXF4SIDL': 0x15,
+    'RXF4E8M': 0x16,
+    'RXF4EID0': 0x17,
+    'RXF5SIDH': 0x18,
+    'RXF5SIDL': 0x19,
+    'RXF5E8M': 0x1A,
+    'RXF5EID0': 0x1B,
+    'RXM0SIDH': 0x20,
+    'RXM0SIDL': 0x21,
+    'RXM0E8M': 0x22,
+    'RXM0EID0': 0x23,
+    'RXM1SIDH': 0x24,
+    'RXM1SIDL': 0x25,
+    'RXM1E8M': 0x26,
+    'RXM1EID0': 0x27,
+}
+
+MCP2515_STAT = {
+    'CANSTAT_MASK': 0xE0,
+    'MODE_NORMAL': 0x00,
+    'MODE_SLEEP': 0x01,
+    'MODE_LOOPBACK': 0x02,
+    'MODE_LISTEN_ONLY': 0x03,
+    'MODE_CONFIG': 0x04,
+    'MODE_POWERUP': 0x07,
+}
+
+MCP2515_CTRL = {
+    'REQOP0': 5,
+    'REQOP1': 6,
+    'REQOP2': 7,
+    'CLKOUT_ENABLE': 3,
+}
+
+MCP2515_CANINTF = {
+    'RX0IF': 0,
+    'RX1IF': 1,
+    'TX0IF': 2,
+    'TX1IF': 3,
+    'TX2IF': 4,
+    'ERRIF': 5,
+    'WAKIF': 6,
+    'MERRF': 7,
+}
+
+MCP2515_TXB0CTRL = {
+    'TXREQ': 3,
+    'TXPRIORITY0': 0,
+    'TXPRIORITY1': 1,
+    'TXPRIORITY2': 2,
+}
+
+CNF1_SJW = {
+    1: 0x00,
+    2: 0x40,
+    3: 0x80,
+    4: 0xC0,
+}
+
+CNF2_BRP = {
+    125: 0x07,
+    250: 0x03,
+    500: 0x01,
+    1000: 0x00,
+}
+
+BAUD_RATE_CONFIG = {
+    125000: (0x03, 0x91, 0x03),
+    250000: (0x01, 0x91, 0x03),
+    500000: (0x00, 0x91, 0x03),
+    1000000: (0x00, 0x80, 0x01),
+}
+
+
+class MCP2515CANDriver:
+    """MCP2515 SPI转CAN驱动类"""
+    
+    MCP2515_INT_PIN = 5
+    
+    def __init__(self, spi_bus=1, spi_device=0, bitrate=500000):
+        self.spi_bus = spi_bus
+        self.spi_device = spi_device
+        self.bitrate = bitrate
+        self.spi = None
+        self.connected = False
+        self.lock = threading.Lock()
+        self.gpio_channel = None
+        self.int_pin = self.MCP2515_INT_PIN
+        self.gpio_initialized = False
+        
+        if HAS_GPIO:
+            try:
+                GPIO.setmode(GPIO.BCM)
+                GPIO.setup(self.int_pin, GPIO.IN)
+                self.gpio_initialized = True
+                rospy.loginfo(f"✅ GPIO {self.int_pin} (Pin 29) 已配置为中断输入")
+            except Exception as e:
+                rospy.logwarn(f"⚠️ GPIO 中断配置失败: {e}")
+                self.int_pin = None
+                self.gpio_initialized = False
+        else:
+            self.int_pin = None
+            self.gpio_initialized = False
+            rospy.logwarn("⚠️ GPIO 库不可用，使用轮询模式")
+    
+    def wait_for_interrupt(self, timeout=1.0):
+        """等待 MCP2515 中断 (GPIO 中断或超时)"""
+        if self.gpio_initialized and self.int_pin:
+            try:
+                start_time = time.time()
+                while (time.time() - start_time) < timeout:
+                    intf = self.read_register(MCP2515_REG['CANINTF'])
+                    if intf and (intf & 0x03):
+                        return True
+                    if HAS_GPIO and GPIO.input(self.int_pin) == GPIO.LOW:
+                        return True
+                    time.sleep(0.0001)
+                return False
+            except Exception as e:
+                rospy.logwarn(f"GPIO 中断等待异常: {e}")
+                return False
+        else:
+            time.sleep(0.001)
+            intf = self.read_register(MCP2515_REG['CANINTF'])
+            return intf and (intf & 0x03) != 0
+    
+    def connect(self):
+        """连接 MCP2515"""
+        try:
+            self.spi = spidev.SpiDev()
+            self.spi.open(self.spi_bus, self.spi_device)
+            self.spi.max_speed_hz = 500000
+            self.spi.mode = 0b00
+            self.spi.bits_per_word = 8
+            self.connected = True
+            rospy.loginfo(f"✅ SPI 连接成功: /dev/spidev{self.spi_bus}.{self.spi_device} @ 500kHz")
+            return True
+        except FileNotFoundError:
+            rospy.logerr(f"❌ SPI 设备不存在: /dev/spidev{self.spi_bus}.{self.spi_device}")
+            return False
+        except PermissionError:
+            rospy.logerr(f"❌ 权限不足: /dev/spidev{self.spi_bus}.{self.spi_device}")
+            return False
+        except Exception as e:
+            rospy.logerr(f"❌ SPI 连接失败: {e}")
+            return False
+    
+    def disconnect(self):
+        """断开 MCP2515 连接"""
+        if self.spi:
+            try:
+                self.spi.close()
+            except Exception:
+                pass
+            self.spi = None
+            self.connected = False
+    
+    def spi_transfer(self, data):
+        """SPI 传输"""
+        if not self.connected:
+            return None
+        with self.lock:
+            try:
+                result = self.spi.xfer2(data)
+                rospy.logdebug(f"SPI xfer: sent={[f'{b:02X}' for b in data]}, recv={[f'{b:02X}' for b in result] if result else None}")
+                return result
+            except Exception as e:
+                rospy.logerr(f"❌ SPI 传输错误: {e}")
+                return None
+    
+    def reset(self):
+        """重置 MCP2515"""
+        rospy.loginfo("发送 SPI 复位命令 (0xC0)...")
+        cmd = [0xC0]
+        result = self.spi_transfer(cmd)
+        rospy.loginfo(f"复位响应: {result}")
+        time.sleep(0.5)
+        
+        rospy.loginfo("验证 MCP2515 是否响应 - 读取 CANSTAT...")
+        canstat = self.read_register(MCP2515_REG['CANSTAT'])
+        rospy.loginfo(f"CANSTAT = 0x{canstat:02X}" if canstat is not None else "CANSTAT = None")
+        rospy.loginfo("MCP2515 已重置")
+    
+    def read_register(self, addr):
+        """读取单个寄存器"""
+        cmd = [MCP2515_SPI_INST['READ'], addr, 0x00]
+        result = self.spi_transfer(cmd)
+        if result and len(result) >= 3:
+            return result[2]
+        rospy.logwarn(f"⚠️ 寄存器读取失败: addr=0x{addr:02X}, result={result}")
+        return None
+    
+    def write_register(self, addr, value):
+        """写入单个寄存器"""
+        cmd = [MCP2515_SPI_INST['WRITE'], addr, value]
+        self.spi_transfer(cmd)
+    
+    def bit_modify(self, addr, mask, value):
+        """位修改"""
+        cmd = [MCP2515_SPI_INST['BIT_MODIFY'], addr, mask, value]
+        self.spi_transfer(cmd)
+    
+    def read_status(self):
+        """读取状态寄存器"""
+        cmd = [MCP2515_SPI_INST['READ_STATUS'], 0x00]
+        result = self.spi_transfer(cmd)
+        if result:
+            return result[1]
+        return None
+    
+    def read_rx_status(self):
+        """读取 RX 状态"""
+        cmd = [MCP2515_SPI_INST['RX_STATUS'], 0x00]
+        result = self.spi_transfer(cmd)
+        if result:
+            return result[1]
+        return None
+    
+    def debug_registers(self):
+        """读取并打印关键寄存器用于调试"""
+        rospy.loginfo("=== MCP2515 寄存器状态 ===")
+        
+        rospy.loginfo("尝试直接 SPI 通信测试...")
+        test_cmd = [MCP2515_SPI_INST['READ_STATUS'], 0x00]
+        raw_result = self.spi_transfer(test_cmd)
+        rospy.loginfo(f"  READ_STATUS 原始响应: {[f'{b:02X}' for b in raw_result] if raw_result else None}")
+        
+        rospy.loginfo("尝试 RX_STATUS 测试...")
+        test_cmd2 = [MCP2515_SPI_INST['RX_STATUS'], 0x00]
+        raw_result2 = self.spi_transfer(test_cmd2)
+        rospy.loginfo(f"  RX_STATUS 原始响应: {[f'{b:02X}' for b in raw_result2] if raw_result2 else None}")
+        
+        regs_to_check = [
+            ('CANSTAT', MCP2515_REG['CANSTAT']),
+            ('CANCTRL', MCP2515_REG['CANCTRL']),
+            ('CANINTE', MCP2515_REG['CANINTE']),
+            ('CANINTF', MCP2515_REG['CANINTF']),
+            ('CNF1', MCP2515_REG['CNF1']),
+            ('CNF2', MCP2515_REG['CNF2']),
+            ('CNF3', MCP2515_REG['CNF3']),
+            ('TXB0CTRL', MCP2515_REG['TXB0CTRL']),
+            ('TXB0SIDH', MCP2515_REG['TXB0SIDH']),
+            ('TXB0SIDL', MCP2515_REG['TXB0SIDL']),
+            ('TXB0DLC', MCP2515_REG['TXB0DLC']),
+            ('TXB0D0', MCP2515_REG['TXB0D0']),
+            ('RXB0CTRL', MCP2515_REG['RXB0CTRL']),
+        ]
+        for name, addr in regs_to_check:
+            val = self.read_register(addr)
+            rospy.loginfo(f"  {name}(0x{addr:02X}) = 0x{val:02X}" if val is not None else f"  {name}(0x{addr:02X}) = None")
+        rospy.loginfo("==============================")
+    
+    def set_mode(self, mode):
+        """设置操作模式"""
+        stat = self.read_register(MCP2515_REG['CANSTAT'])
+        if stat is not None:
+            current_mode = (stat & 0xE0) >> 5
+            rospy.loginfo(f"当前 CANSTAT=0x{stat:02X}, 模式={current_mode}")
+            if current_mode == mode:
+                rospy.loginfo(f"已处于目标模式: {mode}")
+                return True
+        
+        rospy.loginfo(f"正在切换到模式: {mode}")
+        control = self.read_register(MCP2515_REG['CANCTRL'])
+        if control is None:
+            rospy.logerr("无法读取 CANCTRL")
+            return False
+        
+        new_control = (control & 0xE3) | ((mode & 0x07) << 5)
+        self.write_register(MCP2515_REG['CANCTRL'], new_control)
+        
+        timeout = 100
+        while timeout > 0:
+            stat = self.read_register(MCP2515_REG['CANSTAT'])
+            if stat is not None:
+                current_mode = (stat & 0xE0) >> 5
+                if current_mode == mode:
+                    rospy.loginfo(f"✅ 模式切换成功: {mode}")
+                    return True
+            time.sleep(0.01)
+            timeout -= 1
+        
+        rospy.logerr(f"❌ 模式切换超时")
+        return False
+    
+    def initialize(self):
+        """初始化 MCP2515 - 8MHz晶振版本"""
+        if not self.connected:
+            rospy.logerr("❌ 未连接，无法初始化")
+            return False
+        
+        rospy.loginfo("正在初始化 MCP2515 (8MHz晶振)...")
+        
+        self.reset()
+        time.sleep(0.5)
+        
+        self.write_register(MCP2515_REG['CANCTRL'], 0x80)
+        rospy.loginfo("写入 CANCTRL=0x80 (配置模式), 等待...")
+        time.sleep(0.1)
+        verify_ctrl = self.read_register(MCP2515_REG['CANCTRL'])
+        rospy.loginfo(f"  CANCTRL 验证 = 0x{verify_ctrl:02X}" if verify_ctrl is not None else "  CANCTRL 验证失败")
+        
+        baud_cfg = BAUD_RATE_CONFIG.get(self.bitrate, BAUD_RATE_CONFIG[500000])
+        self.write_register(MCP2515_REG['CNF1'], baud_cfg[0])
+        self.write_register(MCP2515_REG['CNF2'], baud_cfg[1])
+        self.write_register(MCP2515_REG['CNF3'], baud_cfg[2])
+        rospy.loginfo(f"✅ 波特率配置: {self.bitrate} bps (CNF1=0x{baud_cfg[0]:02X}, CNF2=0x{baud_cfg[1]:02X}, CNF3=0x{baud_cfg[2]:02X})")
+        
+        verify_cnf1 = self.read_register(MCP2515_REG['CNF1'])
+        verify_cnf2 = self.read_register(MCP2515_REG['CNF2'])
+        verify_cnf3 = self.read_register(MCP2515_REG['CNF3'])
+        rospy.loginfo(f"  CNF 验证: CNF1=0x{verify_cnf1:02X}, CNF2=0x{verify_cnf2:02X}, CNF3=0x{verify_cnf3:02X}")
+        
+        self.write_register(MCP2515_REG['TXB0CTRL'], 0x03)
+        verify_txb0 = self.read_register(MCP2515_REG['TXB0CTRL'])
+        rospy.loginfo(f"  TXB0CTRL 验证 = 0x{verify_txb0:02X}" if verify_txb0 is not None else "  TXB0CTRL 验证失败")
+        
+        self.write_register(MCP2515_REG['RXB0CTRL'], 0x60)
+        self.write_register(MCP2515_REG['RXB1CTRL'], 0x60)
+        
+        self.write_register(MCP2515_REG['CANINTF'], 0x00)
+        self.write_register(MCP2515_REG['CANINTE'], 0x03)
+        
+        self.write_register(MCP2515_REG['CANCTRL'], 0x00)
+        time.sleep(0.1)
+        
+        canstat = self.read_register(MCP2515_REG['CANSTAT'])
+        mode = (canstat & 0xE0) >> 5 if canstat else None
+        rospy.loginfo(f"✅ MCP2515 初始化完成, CANSTAT=0x{canstat:02X}, 模式={mode} (0x00=Normal)")
+        
+        return True
+    
+    def get_status(self):
+        """获取状态"""
+        return self.read_register(MCP2515_REG['CANSTAT'])
+    
+    def check_tx_ready(self):
+        """检查 TXB0 是否就绪"""
+        ctrl = self.read_register(MCP2515_REG['TXB0CTRL'])
+        if ctrl is not None:
+            return (ctrl & (1 << MCP2515_TXB0CTRL['TXREQ'])) == 0
+        return False
+    
+    def enable_loopback_mode(self):
+        """启用回环模式 - 用于测试"""
+        rospy.loginfo("正在启用回环模式...")
+        control = self.read_register(MCP2515_REG['CANCTRL'])
+        if control is None:
+            rospy.logerr("无法读取 CANCTRL")
+            return False
+        
+        self.write_register(MCP2515_REG['CANCTRL'], 0x40)
+        time.sleep(0.1)
+        
+        stat = self.read_register(MCP2515_REG['CANSTAT'])
+        if stat is not None:
+            mode = (stat & 0xE0) >> 5
+            rospy.loginfo(f"回环模式状态: CANSTAT=0x{stat:02X}, 模式={mode}")
+            if mode == 0x02:
+                rospy.loginfo("✅ 回环模式已启用")
+                return True
+        
+        rospy.logerr("❌ 回环模式启用失败")
+        return False
+    
+    def disable_loopback_mode(self):
+        """禁用回环模式 - 恢复普通模式"""
+        rospy.loginfo("正在禁用回环模式...")
+        self.write_register(MCP2515_REG['CANCTRL'], 0x00)
+        time.sleep(0.1)
+        
+    def loopback_test(self, can_id=0x123, data=[0x11, 0x22, 0x33, 0x44], dlc=4):
+        """回环测试 - 发送的帧会被自己接收"""
+        rospy.loginfo("=" * 50)
+        rospy.loginfo("开始 MCP2515 回环测试...")
+        rospy.loginfo("=" * 50)
+        
+        if not self.enable_loopback_mode():
+            rospy.logerr("回环测试失败: 无法启用环回模式")
+            return False, "无法启用环回模式"
+        
+        self.bit_modify(MCP2515_REG['CANINTF'], 0xFF, 0x00)
+        self.bit_modify(MCP2515_REG['EFLG'], 0xFF, 0x00)
+        time.sleep(0.05)
+        
+        for _ in range(10):
+            if self.read_register(MCP2515_REG['CANINTF']) & 0x03:
+                self.receive_can_frame()
+                self.bit_modify(MCP2515_REG['CANINTF'], 0x03, 0x00)
+                time.sleep(0.01)
+            else:
+                break
+        
+        rospy.loginfo(f"📤 发送测试帧: ID=0x{can_id:X} DLC={dlc} Data={' '.join([f'{b:02X}' for b in data])}")
+        
+        success, msg = self.send_can_frame(can_id, list(data), dlc, extended=False, remote=False)
+        if not success:
+            rospy.logerr(f"❌ 发送失败: {msg}")
+            self.disable_loopback_mode()
+            return False, f"发送失败: {msg}"
+        
+        rospy.loginfo("✅ 发送成功，等待接收...")
+        
+        for attempt in range(100):
+            intf = self.read_register(MCP2515_REG['CANINTF'])
+            if intf is not None and (intf & 0x03):
+                frame = self.receive_can_frame()
+                if frame:
+                    recv_id = frame['id']
+                    recv_dlc = frame['dlc']
+                    recv_data = frame['data'][:recv_dlc]
+                    rospy.loginfo(f"📥 收到帧: ID=0x{recv_id:X} DLC={recv_dlc} Data={' '.join([f'{b:02X}' for b in recv_data])}")
+                    
+                    if recv_id == can_id and recv_dlc == dlc and recv_data == data[:dlc]:
+                        rospy.loginfo("✅ 回环测试成功!")
+                        self.disable_loopback_mode()
+                        return True, "回环测试成功"
+                    else:
+                        rospy.logwarn("收到不匹配的帧，清除并继续等待...")
+                        self.bit_modify(MCP2515_REG['CANINTF'], 0x03, 0x00)
+                        continue
+            time.sleep(0.001)
+        
+        rospy.logerr("超时未收到回环帧")
+        self.disable_loopback_mode()
+        return False, "超时未收到回环帧"
+    
+    def send_can_frame(self, can_id, data, dlc, extended=False, remote=False):
+        """发送 CAN 帧 - 使用 RTS 命令触发发送"""
+        if not self.connected:
+            return False, "未连接"
+        
+        if dlc > 8:
+            return False, "数据长度超出范围 (0-8)"
+        
+        self.bit_modify(MCP2515_REG['CANINTF'], 0xFF, 0x00)
+        self.bit_modify(MCP2515_REG['EFLG'], 0xFF, 0x00)
+        
+        if extended:
+            if can_id > 0x1FFFFFFF:
+                return False, "扩展ID超出范围"
+            sidh = (can_id >> 21) & 0xFF
+            sidl = (((can_id >> 18) & 0x07) << 5) | 0x08 | ((can_id >> 16) & 0x03)
+            eid8 = (can_id >> 8) & 0xFF
+            eid0 = can_id & 0xFF
+        else:
+            if can_id > 0x7FF:
+                return False, "标准ID超出范围"
+            sidh = (can_id >> 3) & 0xFF
+            sidl = ((can_id & 0x07) << 5) & 0xE0
+            eid8 = 0
+            eid0 = 0
+        
+        dlc_byte = dlc & 0x0F
+        if remote:
+            dlc_byte |= 0x40
+        
+        for retry in range(3):
+            self.write_register(MCP2515_REG['TXB0SIDH'], sidh)
+            time.sleep(0.0002)
+            self.write_register(MCP2515_REG['TXB0SIDL'], sidl)
+            time.sleep(0.0002)
+            self.write_register(MCP2515_REG['TXB0E8M'], eid8)
+            time.sleep(0.0002)
+            self.write_register(MCP2515_REG['TXB0EID0'], eid0)
+            time.sleep(0.0002)
+            self.write_register(MCP2515_REG['TXB0DLC'], dlc_byte)
+            time.sleep(0.0002)
+            for i in range(8):
+                val = data[i] if i < dlc else 0
+                self.write_register(MCP2515_REG['TXB0D0'] + i, val)
+                time.sleep(0.0002)
+            
+            verify_sidh = self.read_register(MCP2515_REG['TXB0SIDH'])
+            if verify_sidh == sidh:
+                break
+            rospy.logwarn(f"TXB0SIDH 验证失败: 期望 0x{sidh:02X}, 实际 0x{verify_sidh:02X}, 重试 {retry+1}/3")
+        
+        for i in range(8):
+            val = data[i] if i < dlc else 0
+            self.write_register(MCP2515_REG['TXB0D0'] + i, val)
+            time.sleep(0.0001)
+        
+        self.spi_transfer([MCP2515_SPI_INST['RTS_0']])
+        
+        timeout = 200
+        while timeout > 0:
+            intf = self.read_register(MCP2515_REG['CANINTF'])
+            if intf is not None and (intf & 0x04):
+                self.bit_modify(MCP2515_REG['CANINTF'], 0x04, 0x00)
+                return True, "发送成功"
+            ctrl = self.read_register(MCP2515_REG['TXB0CTRL'])
+            if ctrl is not None and (ctrl & 0x08) == 0:
+                return True, "发送成功"
+            time.sleep(0.001)
+            timeout -= 1
+        
+        final_intf = self.read_register(MCP2515_REG['CANINTF'])
+        final_ctrl = self.read_register(MCP2515_REG['TXB0CTRL'])
+        rospy.logerr(f"❌ 发送超时! INT=0x{final_intf:02X} CTRL=0x{final_ctrl:02X}")
+        return False, "发送超时"
+    
+    def receive_can_frame(self):
+        """接收 CAN 帧 - 正确的ID解码"""
+        if not self.connected:
+            return None
+        
+        intf = self.read_register(MCP2515_REG['CANINTF'])
+        if intf is None:
+            return None
+        
+        rx0if = (intf >> 0) & 0x01
+        rx1if = (intf >> 1) & 0x01
+        
+        if rx0if == 0 and rx1if == 0:
+            return None
+        
+        if rx0if:
+            sidh = self.read_register(MCP2515_REG['RXB0SIDH'])
+            sidl = self.read_register(MCP2515_REG['RXB0SIDL'])
+            eid8 = self.read_register(MCP2515_REG['RXB0E8M'])
+            eid0 = self.read_register(MCP2515_REG['RXB0EID0'])
+            dlc_reg = self.read_register(MCP2515_REG['RXB0DLC'])
+            self.bit_modify(MCP2515_REG['CANINTF'], 0x01, 0x00)
+            data_addr = MCP2515_REG['RXB0D0']
+        elif rx1if:
+            sidh = self.read_register(MCP2515_REG['RXB1SIDH'])
+            sidl = self.read_register(MCP2515_REG['RXB1SIDL'])
+            eid8 = self.read_register(MCP2515_REG['RXB1E8M'])
+            eid0 = self.read_register(MCP2515_REG['RXB1EID0'])
+            dlc_reg = self.read_register(MCP2515_REG['RXB1DLC'])
+            self.bit_modify(MCP2515_REG['CANINTF'], 0x02, 0x00)
+            data_addr = MCP2515_REG['RXB1D0']
+        else:
+            return None
+        
+        if sidh is None or sidl is None or dlc_reg is None:
+            return None
+        
+        extended = (sidl & 0x08) != 0
+        dlc = dlc_reg & 0x0F
+        remote = (dlc_reg & 0x40) != 0
+        
+        if extended:
+            if eid8 is None or eid0 is None:
+                return None
+            can_id = (sidh << 21) | (((sidl >> 5) & 0x07) << 18) | ((sidl & 0x03) << 16) | (eid8 << 8) | eid0
+        else:
+            can_id = ((sidl >> 5) & 0x07) | (sidh << 3)
+        
+        data = []
+        for i in range(dlc):
+            byte = self.read_register(data_addr + i)
+            if byte is not None:
+                data.append(byte)
+        
+        return {
+            'id': can_id,
+            'dlc': dlc,
+            'data': data,
+            'extended': extended,
+            'remote': remote
+        }
+
+class MCP2515CANServer:
+    """MCP2515 CAN 通信 Action Server"""
+    
+    def __init__(self):
+        rospy.init_node('mp2515_can_server')
+        rospy.loginfo("正在初始化 MCP2515 SPI转CAN Action Server...")
+        
+        self.spi_bus = rospy.get_param('~spi_bus', 1)
+        self.spi_device = rospy.get_param('~spi_device', 0)
+        self.bitrate = rospy.get_param('~bitrate', 500000)
+        self.enable_rx_thread = rospy.get_param('~enable_rx_thread', True)
+        self.enable_echo = rospy.get_param('~enable_echo', True)
+        self.loopback_test = rospy.get_param('~loopback_test', False)
+        
+        self.driver = MCP2515CANDriver(self.spi_bus, self.spi_device, self.bitrate)
+        
+        if not self.driver.connect():
+            rospy.logerr("❌ MCP2515 连接失败")
+        
+        if self.driver.connected:
+            if not self.driver.initialize():
+                rospy.logerr("❌ MCP2515 初始化失败")
+        
+        self.server = actionlib.SimpleActionServer(
+            'mp2515_can_comm',
+            MCP2515CANCommAction,
+            self.execute,
+            False
+        )
+        self.server.start()
+        
+        self.rx_thread = None
+        self.rx_thread_running = False
+        if self.enable_rx_thread and self.driver.connected:
+            self.start_rx_thread()
+        
+        if self.driver.connected:
+            rospy.loginfo("✅ MCP2515 SPI转CAN Action Server 已启动")
+            rospy.loginfo(f"   SPI 总线: {self.spi_bus}")
+            rospy.loginfo(f"   SPI 设备: {self.spi_device}")
+            rospy.loginfo(f"   波特率: {self.bitrate} bps")
+            
+            if self.loopback_test:
+                rospy.loginfo("🔄 回环测试模式已启用")
+                if self.rx_thread_running and self.rx_thread:
+                    self.rx_thread_running = False
+                    self.rx_thread.join(timeout=0.5)
+                    rospy.loginfo("已停止接收线程")
+                success, msg = self.driver.loopback_test()
+                if success:
+                    rospy.loginfo("✅ 回环测试通过 - MCP2515 和 SPI 通信正常")
+                else:
+                    rospy.logerr(f"❌ 回环测试失败: {msg}")
+                rospy.loginfo("🔄 关闭节点...")
+                rospy.signal_shutdown("回环测试完成")
+                return
+        else:
+            rospy.logwarn("⚠️  MCP2515 未连接，服务器以有限功能运行")
+        
+        rospy.on_shutdown(self.cleanup)
+    
+    def start_rx_thread(self):
+        """启动接收线程"""
+        self.rx_thread_running = True
+        self.rx_thread = threading.Thread(target=self.rx_thread_func, daemon=True)
+        self.rx_thread.start()
+        rospy.loginfo("✅ 接收线程已启动")
+    
+    def rx_thread_func(self):
+        """接收线程函数"""
+        rate = rospy.Rate(100)
+        while self.rx_thread_running and not rospy.is_shutdown():
+            try:
+                frame = self.driver.receive_can_frame()
+                if frame:
+                    self.process_received_frame(frame)
+            except Exception as e:
+                rospy.logerr(f"❌ 接收线程异常: {e}")
+            rate.sleep()
+    
+    def process_received_frame(self, frame):
+        """处理接收到的 CAN 帧"""
+        if self.enable_echo:
+            data_str = ' '.join([f'{b:02X}' for b in frame['data'][:frame['dlc']]])
+            id_type = "EXT" if frame['extended'] else "STD"
+            frame_type = "RTR" if frame['remote'] else "DATA"
+            rospy.loginfo(f"📥 CAN 接收: {id_type} ID=0x{frame['id']:X} {frame_type} DLC={frame['dlc']} Data={data_str}")
+    
+    def execute(self, goal):
+        """执行 Goal"""
+        if not self.driver.connected:
+            rospy.logerr("❌ MCP2515 未连接，无法执行任务")
+            result = MCP2515CANCommResult()
+            result.success = False
+            result.message = "MCP2515 未连接"
+            self.server.set_aborted(result)
+            return
+        
+        can_id = goal.can_id
+        data = list(goal.data[:goal.dlc]) if goal.dlc > 0 else []
+        dlc = goal.dlc
+        extended = goal.extended
+        remote = goal.remote
+        
+        if self.enable_echo:
+            id_type = "EXT" if extended else "STD"
+            rospy.loginfo(f"📤 CAN 发送: {id_type} ID=0x{can_id:X} DLC={dlc}")
+        
+        feedback = MCP2515CANCommFeedback()
+        feedback.status = f"正在发送 CAN 帧: ID=0x{can_id:X}"
+        self.server.publish_feedback(feedback)
+        
+        success, message = self.driver.send_can_frame(can_id, data, dlc, extended, remote)
+        
+        result = MCP2515CANCommResult()
+        result.success = success
+        result.message = message
+        result.received_id = 0
+        result.received_dlc = 0
+        result.received_data = [0] * 8
+        
+        if success:
+            self.server.set_succeeded(result)
+            if self.enable_echo:
+                rospy.loginfo(f"✅ {message}")
+        else:
+            self.server.set_aborted(result)
+            rospy.logerr(f"❌ {message}")
+    
+    def cleanup(self):
+        """清理资源"""
+        rospy.loginfo("正在清理资源...")
+        self.rx_thread_running = False
+        if self.rx_thread:
+            self.rx_thread.join(timeout=2)
+        if self.driver:
+            self.driver.disconnect()
+        rospy.loginfo("资源清理完成")
+
+
+if __name__ == '__main__':
+    try:
+        server = MCP2515CANServer()
+        rospy.loginfo("🔄 Action Server 正在运行，等待 Goal 请求...")
+        rospy.spin()
+    except rospy.ROSInterruptException:
+        rospy.loginfo("📛 收到中断信号，正在关闭...")
+    except Exception as e:
+        rospy.logerr(f"❌ 节点运行错误: {e}")

@@ -1,0 +1,198 @@
+C51 COMPILER V9.00   MAIN                                                                  05/18/2016 11:05:12 PAGE 1   
+
+
+C51 COMPILER V9.00, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: d:\Keil\C51\BIN\C51.EXE main.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          //=================================================================================
+   2          //串口到can       4800bps
+   3          //
+   4          //sbit SCK=P2^3;
+   5          //sbit SI=P2^2;
+   6          //sbit SO=P2^1;
+   7          //sbit CS=P2^0;
+   8          //INT 接P3.3
+   9          //
+  10          //=================================================================================
+  11          
+  12          #include "reg51.h"
+  13          #include "2515.h"
+  14          #include "SPI.h"
+  15          #include "Function.h"
+  16          
+  17          #include "CAN0.h"
+  18          
+  19          void CAN_Send_anylength(unsigned char *CAN_TX_Buf,unsigned char length1);
+  20          
+  21          
+  22          unsigned char gRXFlag=0,sRXFlag=0,yRXFlag=0;
+  23          unsigned char data Com_RecBuff[8];
+  24          unsigned char bdata flag_init;
+  25          
+  26          //*************************
+  27          #define INBUF_LEN 8   //数据长度
+  28          
+  29          unsigned char inbuf1[INBUF_LEN];
+  30          unsigned char checksum,count3=0;
+  31          
+  32          
+  33          unsigned char a[8];
+  34          unsigned char b[8]={0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
+  35          
+  36          
+  37          /************************************************************************
+  38          *函数原型: void init_serialcomm(void)            *
+  39          *参数说明: 串口初始化                            *
+  40          *说明: 设值单片机的定时器1的方式选择波特率 。该子程序只能用于复位模式
+  41          ************************************************************************/
+  42          void init_serialcomm(void)
+  43          {
+  44   1        SCON  = 0x50;       //SCON: serail mode 1, 8-bit UART, enable ucvr 
+  45   1        TMOD |= 0x20;       //TMOD: timer 1, mode 2, 8-bit reload 
+  46   1        PCON |= 0x80;       //SMOD=1; 
+  47   1        TH1   = 0xF4;       //Baud:4800  fosc=11.0592MHz  
+  48   1        TL1   = 0xF4;       //
+  49   1        IE   |= 0x90;       //Enable Serial Interrupt 
+  50   1        TR1   = 1;          // timer 1 run
+  51   1      }
+  52          
+  53          //定时器0初始化
+  54          void timer0initial()
+  55          {
+C51 COMPILER V9.00   MAIN                                                                  05/18/2016 11:05:12 PAGE 2   
+
+  56   1        TMOD|=0x1;        //工作方式16位定时计数器
+  57   1        TH0=0xb8;TL0=0x00;  //50MS定时初值（T0计时用）
+  58   1        IE|=0x90;       //Enable Serial Interrupt 
+  59   1        ET0=0;
+  60   1        TR0=0;
+  61   1      }
+  62          
+  63          //向串口发送一个字符
+  64          void send_char_com(unsigned char ch)
+  65          {
+  66   1        SBUF=ch;
+  67   1        while(!TI);
+  68   1        TI=0;
+  69   1      }
+  70          
+  71          //向串口发送一个字符串,strlen为该字符串长度
+  72          void send_string_com(unsigned char *str,unsigned int strlen)
+  73          {
+  74   1        unsigned int k=0;
+  75   1        do
+  76   1        {
+  77   2          send_char_com(*(str+k));
+  78   2          k++;
+  79   2        }while(k<strlen);
+  80   1      }
+  81          
+  82          //定时器0中断,不够8个就在此发送
+  83          void time_intt0(void) interrupt 1 using 2
+  84          {
+  85   1        ET0=0;
+  86   1        TR0=0;
+  87   1        TH0=0xb8;
+  88   1        TL0=0x00;
+  89   1        sRXFlag=1;
+  90   1      }
+  91          
+  92          //串口接收中断函数
+  93          void serial() interrupt 4 using 1
+  94          {
+  95   1        unsigned char ch;
+  96   1      
+  97   1        if(RI)
+  98   1        {
+  99   2          RI=0;
+ 100   2          ET0=1;TR0=1;
+ 101   2          ch=SBUF;
+ 102   2      
+ 103   2          inbuf1[count3]=ch;
+ 104   2          count3=count3+1;
+ 105   2          if(count3==INBUF_LEN)
+ 106   2          {
+ 107   3            ET0=0;
+ 108   3            TR0=0;
+ 109   3            TH0=0xb8;
+ 110   3            TL0=0x00;  //关闭定时中断，停止定时中断
+ 111   3            sRXFlag=1;
+ 112   3          }
+ 113   2        }
+ 114   1      }
+ 115          
+ 116          
+ 117          /****************************************************
+C51 COMPILER V9.00   MAIN                                                                  05/18/2016 11:05:12 PAGE 3   
+
+ 118          **函数原型：  void ex1_int(void) interrupt 2 //using 1
+ 119          **功    能：  外部中断1接收函数
+ 120          **入口参数:   无 
+ 121          **出口参数:   RevceData[]数组   
+ 122          **说    明:   当MCP2515收到正确的报文时,会产生int1中断
+ 123          *****************************************************/
+ 124          void ex1_int(void) interrupt 2 using 1
+ 125          {
+ 126   1        gRXFlag=1;
+ 127   1      }
+ 128          
+ 129          
+ 130          /****************************************************
+ 131          **函数原型：  void Init_Cpu(void)
+ 132          **功    能：  单片机初始化,开放外部中断1
+ 133          **入口参数:   无 
+ 134          **出口参数:    
+ 135          **说    明:   单片机初始化,开放外部中断1  
+ 136          *****************************************************/
+ 137          void Init_Cpu(void)
+ 138          {
+ 139   1        PX1=1;
+ 140   1        EX1=1;
+ 141   1        IT1=0;
+ 142   1        EA=1;
+ 143   1      }
+ 144          
+ 145          void main()
+ 146          {
+ 147   1      
+ 148   1        Init2515();
+ 149   1        init_serialcomm();     //初始化串口
+ 150   1        timer0initial();       //定时器0初始化
+ 151   1        Init_Cpu();
+ 152   1      
+ 153   1        while(1)
+ 154   1        {
+ 155   2          if(sRXFlag)
+ 156   2          {
+ 157   3            sRXFlag=0;
+ 158   3            CAN_Send_anylength(inbuf1,count3);
+ 159   3            count3=0;
+ 160   3          }
+ 161   2      
+ 162   2          if(gRXFlag)
+ 163   2          {
+ 164   3            CAN_Receive_DLC(a);
+ 165   3            gRXFlag=0;
+ 166   3            send_string_com(a,DLC);
+ 167   3          }
+ 168   2        }
+ 169   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    720    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     40      15
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+C51 COMPILER V9.00   MAIN                                                                  05/18/2016 11:05:12 PAGE 4   
+
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

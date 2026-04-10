@@ -1,0 +1,3 @@
+<launch>
+  <node name="yolov11_inference_server" pkg="yolov11_pkg" type="run_server.sh" output="screen"/>
+</launch>
