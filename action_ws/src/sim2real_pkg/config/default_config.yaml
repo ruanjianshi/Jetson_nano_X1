@@ -1,0 +1,12 @@
+model:
+  default_path: "models/model.onnx"
+  default_type: "yolo"
+  input_width: 640
+  input_height: 640
+
+yolo:
+  confidence_threshold: 0.5
+  iou_threshold: 0.45
+
+rl:
+  input_shape: "1,3,64,64"

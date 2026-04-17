@@ -1,4 +1,0 @@
-<launch>
-  <node name="gpio_interrupt_server" pkg="my_action_pkg" type="gpio_interrupt_server.py" output="screen">
-  </node>
-</launch>

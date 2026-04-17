@@ -52,24 +52,29 @@
 ### 3.2 关键库
 - **CUDA**: 10.2.300 (构建: V10.2.300, 发布: 2021-02-28)
 - **cuDNN**: 8.2.1.32
-- **TensorRT**: 8.2.1.8
+- **TensorRT**: 8.2.1.8 (C API可用，Python bindings仅支持Python 3.6)
 - **VPI (Vision Programming Interface)**: 1.2.3
 - **Vulkan**: 1.2.141
 - **OpenCV**: 4.13.0 (带CUDA加速支持)
-- **numpy**: 1.17.4
+- **numpy**: 1.24.4
 
 ### 3.3 Python包
-- **jetson-stats**: 4.3.2 ✅ (系统监控工具)
-- **numpy**: 1.24.4 ✅ (已升级，支持YOLOv11)
-- **PyTorch**: 1.13.0a0+git7c98e70 ✅ (支持CUDA 10.2，GPU加速可用)
-- **TorchVision**: 0.14.0a0+5ce4506 ✅ (支持CUDA 10.2)
-- **ultralytics**: 8.4.33 ✅ (YOLOv11框架，支持GPU推理)
-- **TensorFlow**: ❌ (放弃GPU版本，依赖冲突)
-- **tensorrt**: 通过TensorRT SDK支持
-- **pyyaml**: 5.3.1 ✅
+| 包名 | 版本 | 状态 | 说明 |
+|------|------|------|------|
+| jetson-stats | 4.3.2 | ✅ | 系统监控工具 |
+| numpy | 1.24.4 | ✅ | 已升级，支持YOLOv11 |
+| PyTorch | 1.13.0a0+git7c98e70 | ✅ | CUDA 10.2, GPU加速可用 |
+| TorchVision | 0.14.0a0+5ce4506 | ✅ | CUDA 10.2 支持 |
+| ultralytics | 8.4.33 | ✅ | YOLOv11框架, GPU推理 |
+| onnx | 1.10.0 | ✅ | ONNX模型支持 |
+| onnxruntime | 1.19.2 | ✅ | ONNX推理(CPU only) |
+| pycuda | 2026.1 | ✅ | CUDA Python绑定 |
+| pyyaml | 5.3.1 | ✅ | YAML配置解析 |
+| opencv-python | 4.13.0 | ✅ | CUDA加速 |
+| TensorFlow | 2.4.1 | ⚠️ | CPU模式，GPU版本已放弃 |
 
 ### 3.4 关键工具
-- **jtop**: 4.3.2 ✅ (Jetson系统监控工具, 位于 /usr/local/bin/jtop)
+- **jtop**: 4.3.2 ✅ (Jetson系统监控工具)
 - **JetPack**: NVIDIA边缘AI开发工具包 4.6.2
 - **tegrastats**: GPU/CPU实时监控工具
 - **nvcc**: NVIDIA CUDA编译器 V10.2.300
@@ -78,18 +83,104 @@
 
 | 框架 | 版本 | 安装状态 | GPU支持 | 推荐度 |
 |------|------|----------|---------|--------|
-| **PyTorch** | 1.13.0a0+git7c98e70 | ✅ 已安装 | ✅ CUDA可用 | ⭐⭐⭐⭐⭐ |
-| **TorchVision** | 0.14.0a0+5ce4506 | ✅ 已安装 | ✅ 支持 | ⭐⭐⭐⭐⭐ |
+| **PyTorch** | 1.13.0a0 | ✅ 已安装 | ✅ CUDA可用 | ⭐⭐⭐⭐⭐ |
+| **TorchVision** | 0.14.0a0 | ✅ 已安装 | ✅ 支持 | ⭐⭐⭐⭐⭐ |
 | **Ultralytics** | 8.4.33 | ✅ 已安装 | ✅ 支持 | ⭐⭐⭐⭐⭐ |
-| **TensorRT** | 8.2.1.8 | SDK可用 | ✅ 支持 | ⭐⭐⭐⭐ |
+| **TensorRT** | 8.2.1.8 | ✅ SDK可用 | ✅ C API | ⭐⭐⭐⭐ |
+| **ONNX Runtime** | 1.19.2 | ✅ 已安装 | ⚠️ CPU only | ⭐⭐⭐ |
 
 **推荐**: 使用PyTorch + Ultralytics进行YOLOv11开发，GPU支持完美
 
 ---
 
-## 4. 项目架构
+## 4. ROS工作空间
 
-### 4.1 目录结构
+### 4.1 action_ws (ROS 1 工作空间)
+
+```
+action_ws/
+├── src/
+│   ├── yolov11_pkg/          # YOLOv11 PyTorch GPU推理包
+│   ├── sim2real_pkg/         # PT→ONNX转换 + 强化学习部署包
+│   ├── mcp2515_can_driver/   # CAN总线驱动
+│   ├── opencv_cuda_pkg/      # OpenCV CUDA处理
+│   ├── yb_imu_driver/        # IMU驱动
+│   └── my_action_pkg/         # ROS Action示例
+├── build/                    # 构建空间
+└── devel/                    # 开发空间
+```
+
+### 4.2 项目包说明
+
+#### yolov11_pkg
+YOLOv11 目标检测推理包，使用 PyTorch GPU 推理。
+
+| 功能 | 状态 |
+|------|------|
+| PyTorch GPU 推理 | ✅ |
+| ROS Action 接口 | ✅ |
+| 实时摄像头推理 | ✅ |
+| 视频/图像文件推理 | ✅ |
+
+#### sim2real_pkg
+Sim2Real 部署包，支持模型格式转换和推理。
+
+| 功能 | 状态 | 说明 |
+|------|------|------|
+| YOLO PT→ONNX | ✅ | 使用ultralytics导出 |
+| RL PT→ONNX | ✅ | 支持自定义模型 |
+| ONNX→TensorRT | ⏳ | pycuda已安装，待实现 |
+| ONNX Runtime推理 | ✅ | CPU版本已安装 |
+| PyTorch GPU推理 | ✅ | 复用yolov11_pkg |
+
+---
+
+## 5. 推理方案对比
+
+### 5.1 方案对比表
+
+| 方案 | 依赖 | 性能 | 适用场景 |
+|------|------|------|----------|
+| **PyTorch GPU** | PyTorch + CUDA | YOLOv8s ~200-400ms | ✅ 推荐，生产环境 |
+| **ONNX Runtime CPU** | onnxruntime 1.19.2 | YOLOv8s ~1-2s | 测试/调试阶段 |
+| **TensorRT** | TensorRT SDK + pycuda | YOLOv8s <50ms | 极致优化(待完善) |
+
+### 5.2 推理后端选择建议
+
+1. **快速部署/调试**: 使用 `yolov11_pkg` (PyTorch GPU)
+2. **ONNX格式验证**: 使用 `sim2real_pkg` + ONNX Runtime CPU
+3. **极致性能**: TensorRT (需要后续完善Python bindings)
+
+### 5.3 模型转换工作流
+
+```
+训练环境 (PC)              Jetson Nano
+     │                          │
+     │  导出 .pt                 │
+     ▼                          │
+  .pt ──────────────────────────►│
+     │                          │
+     │  pt2onnx_converter        │
+     ▼                          ▼
+  .onnx ───────────────────────►│
+     │                          │
+     │  ONNX Runtime CPU测试     │  (当前可用)
+     ▼                          ▼
+  验证通过                       │
+                                 │
+     │  (可选) TensorRT优化      │  (待实现)
+     ▼                          ▼
+  .engine ◄──────────────────────│
+     │                          │
+     ▼                          ▼
+  极致性能推理                   │
+```
+
+---
+
+## 6. 项目架构
+
+### 6.1 目录结构
 ```
 /home/jetson/Desktop/Jetson_Nano/
 │
@@ -97,204 +188,127 @@
 │   ├── Jetson_Nano_B01_系统架构文档.md         # 本文档
 │   └── 项目架构详解.md                         # 详细的模块架构说明
 │
-├── src/                                       # 源代码目录 (Python)
-│   ├── __init__.py                            # Python包初始化
-│   ├── main.py                                # 主程序入口 (待创建)
-│   ├── config/                                # 配置模块
-│   │   ├── __init__.py
-│   │   └── config.yaml                        # 主配置文件 (待创建)
-│   ├── models/                                # AI模型目录 (模型文件待添加)
-│   ├── utils/                                 # 工具模块
-│   │   ├── __init__.py
-│   │   ├── camera.py                          # 摄像头接口 (待创建)
-│   │   ├── logger.py                          # 日志模块 (待创建)
-│   │   └── hardware.py                        # 硬件接口 (待创建)
-│   └── inference/                             # AI推理模块
-│       └── __init__.py                        # 推理模块 (待创建)
+├── action_ws/                                 # ROS 1 工作空间
+│   ├── src/
+│   │   ├── yolov11_pkg/                      # YOLOv11 推理包
+│   │   ├── sim2real_pkg/                     # 模型转换/部署包
+│   │   ├── mcp2515_can_driver/                # CAN驱动
+│   │   ├── opencv_cuda_pkg/                  # OpenCV CUDA
+│   │   ├── yb_imu_driver/                     # IMU驱动
+│   │   └── my_action_pkg/                    # Action示例
+│   ├── build/
+│   └── devel/
 │
+├── ROS_Project/                              # 主ROS项目
+│   ├── src/                                   # 源代码
+│   ├── config/                                # 配置
+│   ├── launch/                                # 启动文件
+│   ├── scripts/                               # 脚本
+│   └── docs/                                  # 文档
+│
+├── ThreadPoolProject/                         # C++ CMake项目
 ├── data/                                      # 数据目录
-│   ├── input/                                 # 输入数据 (原始图像、视频)
-│   ├── output/                                # 输出结果 (推理结果、标注图像)
-│   └── models/                                # 模型文件 (.onnx, .engine)
-│
 ├── tests/                                     # 测试目录
-│   ├── test_camera.py                         # 摄像头测试 (待创建)
-│   ├── test_inference.py                      # 推理测试 (待创建)
-│   └── test_hardware.py                       # 硬件测试 (待创建)
-│
-├── docs/                                      # 项目文档 (待添加)
-│   ├── README.md                              # 项目概述
-│   ├── API.md                                 # API参考
-│   └── architecture.md                        # 架构决策记录
-│
-├── scripts/                                   # 脚本目录 (待添加)
-│   ├── setup.sh                               # 环境安装脚本
-│   └── run.sh                                 # 程序运行脚本
-│
-└── log/                                       # 日志目录 (运行时日志)
+├── scripts/                                   # 工具脚本
+└── log/                                       # 日志目录
 ```
 
-### 4.2 项目文件说明
-
-#### 待创建的文件
-| 文件路径 | 类型 | 说明 |
-|---------|------|------|
-| `src/main.py` | Python | 主程序入口，初始化和协调所有模块 |
-| `src/config/config.yaml` | YAML | 系统配置文件 (摄像头、模型、推理参数) |
-| `src/utils/camera.py` | Python | 摄像头接口模块 (支持CSI/USB) |
-| `src/utils/logger.py` | Python | 日志记录模块 (多级别日志) |
-| `src/utils/hardware.py` | Python | 硬件接口 (GPIO、I2C、串口) |
-| `src/inference/*.py` | Python | AI推理模块 (TensorRT加速) |
-| `tests/*.py` | Python | 单元测试和集成测试 |
-| `scripts/setup.sh` | Bash | 自动安装脚本 |
-| `scripts/run.sh` | Bash | 程序运行脚本 |
-| `requirements.txt` | 文本 | Python依赖包列表 |
-| `setup.py` | Python | 项目安装配置 |
-| `Makefile` | Makefile | 构建和管理任务 |
-
 ---
 
-## 5. 模块说明
+## 7. 常用命令
 
-### 5.1 main.py
-主程序入口，负责初始化和调度各模块
-
-### 5.2 config/config.yaml
-配置文件，包含：
-- 摄像头参数
-- 模型路径
-- 推理参数
-- 日志配置
-
-### 5.3 utils/
-- `camera.py`: CSI/USB摄像头接口封装
-- `logger.py`: 日志记录模块
-- `hardware.py`: Jetson硬件接口(GPIO, I2C等)
-
-### 5.4 inference/
-AI推理模块，支持TensorRT加速和YOLOv11
-
----
-
-## 6. 常用命令
+### 7.1 YOLO推理命令
 
 ```bash
-# YOLOv11推理
-yolo predict model=yolo11n.pt source=image.jpg device=0  # GPU推理
-yolo predict model=yolo11n.pt source=0 device=0         # 摄像头实时推理
-yolo export model=yolo11n.pt format=onnx                # 导出ONNX格式
+# PyTorch GPU推理 (yolov11_pkg)
+source action_ws/devel/setup.bash
+rosrun yolov11_pkg yolov11_inference_server.py
 
-# 系统监控
+# 摄像头实时推理
+roslaunch yolov11_pkg yolov11_camera.launch
+
+# 模型转换 (sim2real_pkg)
+source action_ws/devel/setup.bash
+
+# PT -> ONNX
+rosrun sim2real_pkg pt2onnx_converter.py \
+    --mode pt2onnx \
+    --pt /path/to/model.pt \
+    --type yolo
+
+# ONNX -> TensorRT (待完善)
+rosrun sim2real_pkg pt2onnx_converter.py \
+    --mode onnx2trt \
+    --onnx /path/to/model.onnx \
+    --engine /path/to/model.engine
+```
+
+### 7.2 系统监控命令
+
+```bash
+# 完整系统监控 (推荐)
 sudo jtop
 
-# 查看CUDA版本
-nvcc --version
-
-# 查看GPU状态
+# GPU状态
 tegrastats
 
-# 查看内存
+# CUDA版本
+nvcc --version
+
+# 内存
 free -h
 
-# 查看磁盘
+# 磁盘
 df -h
+
+# 电源模式
+sudo nvpmodel -q
 ```
 
 ---
 
-## 7. 开发环境配置
+## 8. 开发环境配置
 
-### 7.1 已安装的Python包
-- **jetson-stats**: 4.3.2 ✅
-- **numpy**: 1.24.4 ✅ (已升级)
-- **opencv-python**: 4.13.0.92 ✅ (CUDA加速)
-- **PyTorch**: 1.13.0a0+git7c98e70 ✅ (CUDA支持)
-- **TorchVision**: 0.14.0a0+5ce4506 ✅ (CUDA支持)
-- **ultralytics**: 8.4.33 ✅ (YOLOv11框架)
-- **TensorFlow**: 2.4.1 ✅ (CPU模式)
-- **tensorflow-estimator**: 2.4.0 ✅
-- **protobuf**: 3.20.3 ✅
-- **termcolor**: 2.0.0 ✅
-- **wrapt**: 2.0.1 ✅
-- **absl-py**: 0.15.0 ✅
-- **flatbuffers**: 1.12 ✅
-- **gast**: 0.3.3 ✅
-- **opt-einsum**: 3.3.0 ✅
-- **six**: 1.15.0 ✅
-- **typing-extensions**: 3.7.4.3 ✅
-- **pyyaml**: 5.3.1 ✅
+### 8.1 已安装的Python包
 
-### 7.2 可选安装的Python包
-```txt
-# 可选依赖
-grpcio~=1.32.0       # TensorFlow RPC通信
-tensorboard~=2.4     # TensorFlow可视化工具
-pycuda>=2021.1       # CUDA Python绑定
-onnx>=1.10.0        # ONNX模型支持
-```
+| 包名 | 版本 | 说明 |
+|------|------|------|
+| jetson-stats | 4.3.2 | 系统监控 |
+| numpy | 1.24.4 | 数值计算 |
+| opencv-python | 4.13.0 | CUDA加速 |
+| PyTorch | 1.13.0a0 | CUDA 10.2 |
+| TorchVision | 0.14.0a0 | CUDA支持 |
+| ultralytics | 8.4.33 | YOLOv11 |
+| onnx | 1.10.0 | ONNX支持 |
+| onnxruntime | 1.19.2 | ONNX推理(CPU) |
+| pycuda | 2026.1 | CUDA Python绑定 |
+| pyyaml | 5.3.1 | 配置解析 |
+| protobuf | 3.20.3 | ONNX依赖 |
+| TensorFlow | 2.4.1 | CPU模式 |
 
-### 7.3 PyTorch安装验证
+### 8.2 安装命令
+
 ```bash
-# 验证PyTorch
-python3 -c "import torch; print(f'PyTorch版本: {torch.__version__}'); print(f'CUDA可用: {torch.cuda.is_available()}'); print(f'GPU型号: {torch.cuda.get_device_name(0)}')"
+# PyTorch验证
+python3 -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}')"
 
-# 验证TorchVision
-python3 -c "import torchvision; print(f'TorchVision版本: {torchvision.__version__}')"
+# Ultralytics验证
+python3 -c "from ultralytics import YOLO; print('Ultralytics OK')"
 
-# PyTorch GPU测试
-python3 << 'EOF'
-import torch
-x = torch.rand(1000, 1000).cuda()
-y = torch.matmul(x, x)
-print(f"GPU矩阵乘法成功: {y.shape}")
-EOF
-```
+# ONNX Runtime验证
+python3 -c "import onnxruntime as ort; print(f'ONNX Runtime: {ort.__version__}')"
 
-### 7.4 YOLOv11安装验证
-```bash
-# 验证Ultralytics (YOLOv11)
-python3 -c "import ultralytics; print(f'Ultralytics版本: {ultralytics.__version__}')"
-
-# 测试YOLOv11模型加载 (首次运行会自动下载yolo11n.pt)
-python3 << 'EOF'
-from ultralytics import YOLO
-import torch
-
-# 加载YOLOv11n轻量模型 (适合Jetson Nano 4GB内存)
-model = YOLO('yolo11n.pt')
-print(f'✅ YOLOv11n模型加载成功')
-
-# 验证GPU加速
-if torch.cuda.is_available():
-    print(f'✅ GPU可用: {torch.cuda.get_device_name(0)}')
-    # 运行测试推理
-    import numpy as np
-    dummy_input = np.zeros((1, 640, 640, 3), dtype=np.uint8)
-    results = model.predict(dummy_input, device='cuda:0', verbose=False)
-    print(f'✅ GPU推理测试成功')
-else:
-    print('⚠️ GPU不可用，使用CPU模式')
-EOF
-```
-
-### 7.5 YOLOv11性能优化建议
-- **模型选择**: 推荐使用yolo11n (nano)或yolo11s (small)以适应4GB内存
-- **推理尺寸**: 默认640x640，可降低至416x416提升速度
-- **批处理**: 单张图像推理，避免批处理导致内存不足
-- **性能模式**: 运行前执行`sudo jetson_clocks`开启最大性能
-
-# 注意：TensorFlow 2.4.1在Jetson Nano上的GPU检测可能有问题，但CPU模式正常工作
+# pycuda验证
+python3 -c "import pycuda.driver as cuda; cuda.init(); print(f'GPU: {cuda.Device(0).name()}')"
 ```
 
 ---
 
-## 8. 系统电源模式
-
-Jetson Nano支持多种电源模式，可通过以下命令切换：
+## 9. 系统电源模式
 
 | 模式 | CPU频率 | GPU频率 | 说明 |
 |------|---------|---------|------|
-| MAXN | 最高 | 最高 | 最大性能模式 (当前模式) |
+| MAXN | 最高 | 最高 | 最大性能模式 (当前) |
 | 15W | 1479MHz | 921MHz | 15W模式 |
 | 10W | 918MHz | 640MHz | 10W模式 |
 | 5W | 918MHz | 640MHz | 5W模式 |
@@ -308,40 +322,66 @@ sudo nvpmodel -m 2  # 10W模式
 # 查看当前模式
 sudo nvpmodel -q
 
-# 应用电源模式后需要设置风扇速度
+# 应用风扇和时钟设置
 sudo jetson_clocks
 ```
 
 ---
 
-## 9. 性能监控命令
+## 10. 性能优化建议
 
-| 命令 | 说明 |
-|------|------|
-| `sudo jtop` | 完整的系统监控界面 (推荐) |
-| `tegrastats` | 实时GPU/CPU/内存使用率 |
-| `jetson_release` | 显示系统版本信息 |
-| `nvcc --version` | 显示CUDA编译器版本 |
-| `free -h` | 显示内存使用情况 |
-| `df -h` | 显示磁盘使用情况 |
-| `nvpmodel -q` | 显示当前电源模式 |
+### 10.1 YOLOv11优化
+- **模型选择**: yolo11n (nano) 适合4GB内存
+- **推理尺寸**: 640x640 可降至 416x416 提升速度
+- **批处理**: 单张推理，避免OOM
+- **性能模式**: 运行前 `sudo jetson_clocks`
+
+### 10.2 内存优化
+- 使用轻量模型 (yolo11n)
+- 降低输入分辨率
+- 避免同时运行多个推理进程
+- 定期监控内存使用 `free -h`
+
+### 10.3 TensorRT加速 (待完善)
+```bash
+# TensorRT引擎构建 (需要pycuda + TensorRT Python)
+# 当前C库可用，Python bindings仅支持Python 3.6
+```
+
+---
+
+## 11. 常见问题
+
+### Q: onnxruntime-gpu无法安装?
+A: aarch64架构无官方预编译包，使用CPU版本或PyTorch GPU推理
+
+### Q: TensorRT Python无法导入?
+A: TensorRT Python bindings仅支持Python 3.6，Jetson Nano默认Python 3.8。可用C API或等待社区支持
+
+### Q: 内存不足 OOM?
+A: 使用yolo11n模型，降低输入分辨率，避免批处理
+
+### Q: 推理速度慢?
+A: 启用MAXN模式 `sudo nvpmodel -m 0 && sudo jetson_clocks`
 
 ---
 
 **文档创建日期**: 2026-03-24
 **设备ID**: Jetson-Nano-B01 (p3448-0002)
-**最后更新**: 2026-04-02
-**文档版本**: v5.0
+**最后更新**: 2026-04-10
+**文档版本**: v6.0
 
 ### 安装历史
 - **PyTorch**: 2026-03-24 (版本 1.13.0a0+git7c98e70)
-- **OpenCV 4.13.0**: 2026-03-26 (版本 4.13.0 - CUDA/cuDNN加速)
-- **Python环境恢复**: 2026-03-26 (版本 1.17.4 - 系统默认)
-- **Ultralytics YOLOv11**: 2026-04-02 (版本 8.4.33 - YOLOv11框架)
-- **NumPy升级**: 2026-04-02 (版本 1.24.4 - 支持YOLOv11)
+- **OpenCV 4.13.0**: 2026-03-26 (CUDA/cuDNN加速)
+- **Ultralytics YOLOv11**: 2026-04-02 (版本 8.4.33)
+- **NumPy升级**: 2026-04-02 (版本 1.24.4)
+- **pycuda**: 2026-04-10 (版本 2026.1)
+- **onnxruntime**: 2026-04-10 (版本 1.19.2, CPU版)
+- **onnx**: 2026-04-10 (版本 1.10.0)
 
 ### 重要说明
-- **TensorFlow GPU版本已放弃**：依赖冲突导致系统环境破坏
-- **推荐使用PyTorch + Ultralytics**：完美支持CUDA 10.2和cuDNN 8.2
-- **OpenCV 4.13.0 CUDA版本已安装**：支持GPU加速图像处理
-- **YOLOv11已就绪**：推荐使用yolo11n模型以适应4GB内存限制
+- **推荐使用PyTorch + Ultralytics**: GPU加速完美，YOLOv11直接推理
+- **ONNX Runtime**: aarch64无GPU版本，CPU推理较慢
+- **TensorRT**: C库可用，Python bindings待社区支持
+- **sim2real_pkg**: PT→ONNX转换工具，可配合yolov11_pkg使用

@@ -8,6 +8,9 @@
 #include <xyber_controller.h>
 #include <common_type.h>
 #include <vector>
+#include <thread>
+#include <mutex>
+#include <atomic>
 
 class DCUControlNode
 {
@@ -29,6 +32,7 @@ public:
     }
     
     ~DCUControlNode() {
+        stopSendThread();
         if (xyber_ctrl_) xyber_ctrl_->Stop();
     }
     
@@ -105,7 +109,10 @@ public:
             auto state = xyber_ctrl_->GetPowerState(name);
             auto mode = xyber_ctrl_->GetMode(name);
             ROS_INFO("Motor %s: state=%d, mode=%d", name.c_str(), (int)state, (int)mode);
+            target_cmds_[name] = {0.0f, 10.0f, 1.0f};
         }
+        
+        startSendThread();
         
         return true;
     }
@@ -123,8 +130,37 @@ public:
         
         ROS_INFO("Received cmd: pos=%.3f, kp=%.1f, kd=%.1f", pos, kp, kd);
         
+        std::lock_guard<std::mutex> lock(cmd_mutex_);
         for (const auto& name : motor_names_) {
-            xyber_ctrl_->SetMitCmd(name, pos, 0.0f, 0.0f, kp, kd);
+            target_cmds_[name] = {pos, kp, kd};
+        }
+    }
+    
+    void sendLoop()
+    {
+        ros::Rate rate(500);
+        while (running_) {
+            {
+                std::lock_guard<std::mutex> lock(cmd_mutex_);
+                for (const auto& [name, cmd] : target_cmds_) {
+                    xyber_ctrl_->SetMitCmd(name, cmd[0], 0.0f, 0.0f, cmd[1], cmd[2]);
+                }
+            }
+            rate.sleep();
+        }
+    }
+    
+    void startSendThread()
+    {
+        running_ = true;
+        send_thread_ = std::thread(&DCUControlNode::sendLoop, this);
+    }
+    
+    void stopSendThread()
+    {
+        running_ = false;
+        if (send_thread_.joinable()) {
+            send_thread_.join();
         }
     }
     
@@ -168,6 +204,12 @@ private:
     
     std::vector<MotorConfig> motors_;
     std::vector<std::string> motor_names_;
+    
+    std::atomic<bool> running_{false};
+    std::thread send_thread_;
+    
+    std::mutex cmd_mutex_;
+    std::map<std::string, std::array<float, 3>> target_cmds_;
 };
 
 int main(int argc, char** argv)

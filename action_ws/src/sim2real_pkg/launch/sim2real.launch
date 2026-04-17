@@ -1,0 +1,13 @@
+<launch>
+  <arg name="model_path" default="$(find sim2real_pkg)/models/model.onnx" />
+  <arg name="model_type" default="yolo" />
+  <arg name="backend" default="auto" />
+  <arg name="input_shape" default="1,3,64,64" />
+
+  <node name="yolo_onnx_inference" pkg="sim2real_pkg" type="yolo_inference/onnx_inference.py" output="screen">
+    <param name="model_path" value="$(arg model_path)" />
+    <param name="model_type" value="$(arg model_type)" />
+    <param name="backend" value="$(arg backend)" />
+    <param name="input_shape" value="$(arg input_shape)" />
+  </node>
+</launch>

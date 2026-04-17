@@ -1,0 +1,24 @@
+# Goal
+string model_path
+string model_type
+string input_type
+string input_source
+float32 confidence_threshold
+float32 iou_threshold
+string save_image_path
+
+---
+
+# Result
+uint32 num_detections
+float32 inference_time
+uint32 frames_processed
+float32 avg_inference_time
+sim2real_pkg/DetectionResult[] detections
+
+---
+
+# Feedback
+uint32 frame_count
+float32 fps
+string status

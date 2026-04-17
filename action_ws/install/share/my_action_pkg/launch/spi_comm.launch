@@ -1,5 +1,0 @@
-<launch>
-  <node name="spi_comm_server" pkg="my_action_pkg" type="spi_comm_server.py" output="screen">
-    <param name="enable_echo" value="true" />
-  </node>
-</launch>

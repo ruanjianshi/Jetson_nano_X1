@@ -1,8 +1,0 @@
-<launch>
-  <node name="serial_comm_server" pkg="my_action_pkg" type="serial_comm_server.py" output="screen">
-    <param name="serial_port" value="/dev/ttyTHS1" />
-    <param name="baud_rate" value="115200" />
-    <param name="timeout" value="1.0" />
-    <param name="enable_echo" value="true" />
-  </node>
-</launch>

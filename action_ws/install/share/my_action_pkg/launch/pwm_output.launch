@@ -1,4 +1,0 @@
-<launch>
-  <node name="pwm_output_server" pkg="my_action_pkg" type="pwm_output_server.py" output="screen">
-  </node>
-</launch>
