@@ -1,0 +1,33 @@
+DCUDriverModule:
+  ethercat:
+    ifname: "eth0"
+    enable_dc: true
+    cycle_ns: 1000000
+    rt_priority: -1
+    bind_cpu: -1
+
+  dcu_network:
+    - name: "pfr_r_arm_joint1"
+      ethercat_id: 1
+      can_channel: "CTRL1"
+      can_node_id: 1
+      actuator_type: "PowerFlowR86"
+      position_min: -6.28
+      position_max: 6.28
+
+    - name: "pfr_r_arm_joint2"
+      ethercat_id: 1
+      can_channel: "CTRL1"
+      can_node_id: 2
+      actuator_type: "PowerFlowR86"
+      position_min: -6.28
+      position_max: 6.28
+
+  transmission:
+    joint_to_actuator:
+      pfr_r_arm_joint1:
+        actuator: pfr_r_arm_joint1
+        reduction: 48.0
+      pfr_r_arm_joint2:
+        actuator: pfr_r_arm_joint2
+        reduction: 48.0

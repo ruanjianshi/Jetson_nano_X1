@@ -1,0 +1,16 @@
+# DCU Control Goal
+string[] joint_names
+float64[] positions
+float64[] velocities
+float64[] efforts
+float64[] stiffness
+float64[] damping
+---
+# DCU Control Result
+bool success
+string message
+---
+# DCU Control Feedback
+float64[] current_positions
+float64[] current_velocities
+float64[] current_efforts

@@ -1,0 +1,12 @@
+<launch>
+  <arg name="command" default="control"/>
+  <arg name="pos" default="3.14"/>
+  <arg name="kp" default="50.0"/>
+  <arg name="kd" default="1.0"/>
+
+  <node name="dcu_driver_client" 
+        pkg="dcu_driver_pkg" 
+        type="dcu_driver_client" 
+        args="$(arg command)"
+        output="screen"/>
+</launch>

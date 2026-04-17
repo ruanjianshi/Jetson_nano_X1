@@ -1,0 +1,23 @@
+<launch>
+  <arg name="ethercat_if" default="eth0"/>
+  <arg name="enable_dc" default="true"/>
+  <arg name="cycle_ns" default="1000000"/>
+
+  <rosparam param="motors">
+    - name: "joint3"
+      ethercat_id: 1
+      can_node_id: 3
+      can_channel: "CTRL1"
+      actuator_type: "POWER_FLOW_R86"
+  </rosparam>
+
+  <param name="ethercat_if" value="$(arg ethercat_if)"/>
+  <param name="enable_dc" value="$(arg enable_dc)"/>
+  <param name="cycle_ns" value="$(arg cycle_ns)"/>
+
+  <node name="dcu_driver_server" 
+        pkg="dcu_driver_pkg" 
+        type="dcu_driver_server" 
+        output="screen"
+        required="true"/>
+</launch>
