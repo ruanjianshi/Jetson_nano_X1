@@ -196,12 +196,12 @@ float XyberController::GetTempure(const std::string& name) {
   return it->second->GetTempure(name);
 }
 
-// std::string XyberController::GetErrorString(const std::string& name) {
-//   auto it = actuator_dcu_map_.find(name);
-//   if (it == actuator_dcu_map_.end()) return "";
+std::string XyberController::GetErrorString(const std::string& name) {
+  auto it = actuator_dcu_map_.find(name);
+  if (it == actuator_dcu_map_.end()) return "";
 
-//   return it->second->GetErrorString(name);
-// }
+  return it->second->GetErrorString(name);
+}
 
 ActautorState XyberController::GetPowerState(const std::string& name) {
   auto it = actuator_dcu_map_.find(name);

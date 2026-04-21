@@ -2,13 +2,18 @@
 
 ## 项目概述
 
-本文档记录 Jetson Nano B01 控制智元科技 X1 机器人 DCU (EtherCAT to CANFD 网关) 的开发过程和踩坑经验。
+本项目实现 Jetson Nano B01 通过 EtherCAT 控制智元科技 PowerFlow R 系列执行器的驱动框架。
+
+**参考协议**: [智元 PowerFlow R 系列执行器产品手册](https://www.agibot.com.cn/DOCS/PM/PFR)
 
 ## 目录
 
 - [硬件配置](#硬件配置)
+- [协议参数](#协议参数)
 - [架构](#架构)
-- [XyberController API](#xybercontroller-api)
+- [SDK API](#sdk-api)
+- [消息格式](#消息格式)
+- [控制方式](#控制方式)
 - [数据类型](#数据类型)
 - [代码结构](#代码结构)
 - [运行](#运行)
@@ -18,235 +23,152 @@
 
 ## 硬件配置
 
-- **平台**: Jetson Nano B01 (4GB RAM)
-- **DCU**: 智元科技 X1 机器人控制器
-- **电机**: PowerFlow R86
+- **平台**: Jetson Nano B01 (4GB RAM, aarch64)
+- **DCU**: 智元科技 X1 域控制器 (EtherCAT to CANFD 网关)
+- **电机**: PowerFlow R86-3 / R86-2 / R52
 - **通信**: EtherCAT (Jetson Nano) → DCU → CANFD (电机)
+
+## 协议参数
+
+智元 PowerFlow R 系列执行器协议关键参数：
+
+| 参数 | 最小值 | 最大值 | 单位 |
+|------|--------|--------|------|
+| Position | -6.28 | 6.28 | rad |
+| Velocity | -12.56 | 12.56 | rad/s |
+| Torque (R86) | -100 | 100 | Nm |
+| Torque (R52) | -50 | 50 | Nm |
+| Kp (刚度) | 0 | 500 | - |
+| Kd (阻尼) | 0 | 8 | - |
+
+**CANFD 通信参数**:
+- 仲裁段波特率: 1Mbps
+- 数据段波特率: 5Mbps
+- 采样点: 80% (仲裁段) / 75% (数据段)
 
 ## 架构
 
 ```
 Jetson Nano (EtherCAT)
-      ↓
-   DCU (网关)
-      ↓
-CANFD → R86 电机 (CTRL1)
-      ↓
-CAN 分析仪 (测试用)
+       ↓
+    DCU (网关)
+       ↓
+CANFD → PowerFlow R 执行器 (ID 1-8)
 ```
 
-## XyberController API
+## SDK API (XyberController)
 
-XyberController 是单例模式，通过 `GetInstance()` 获取实例。
+**头文件**: `xyber_controller.h`
 
-### 头文件
-
-```cpp
-#include "xyber_controller.h"
-```
-
-### 核心 API
-
-#### 获取实例
+### 执行器控制
 
 ```cpp
-xyber::XyberController* ctrl = xyber::XyberController::GetInstance();
-```
-
-#### 创建 DCU
-
-```cpp
-bool CreateDcu(std::string name, uint8_t ethercat_id);
-```
-
-**参数**:
-- `name`: DCU 名称 (如 "dcu1")
-- `ethercat_id`: EtherCAT 从站 ID (通常为 1)
-
-**示例**:
-```cpp
-ctrl->CreateDcu("dcu1", 1);
-```
-
-#### 挂载执行器
-
-```cpp
-bool AttachActuator(std::string dcu_name, CtrlChannel ch, ActuatorType type,
-                     std::string actuator_name, uint8_t can_id);
-```
-
-**参数**:
-- `dcu_name`: DCU 名称
-- `ch`: CANFD 通道 (CTRL_CH1, CTRL_CH2, CTRL_CH3)
-- `type`: 执行器类型 (POWER_FLOW_R86, POWER_FLOW_R52, etc.)
-- `actuator_name`: 执行器名称 (如 "joint1", "joint3")
-- `can_id`: CAN 总线上的 ID
-
-**示例**:
-```cpp
-ctrl->AttachActuator("dcu1", xyber::CtrlChannel::CTRL_CH1,
-                     xyber::ActuatorType::POWER_FLOW_R86, "joint3", 3);
-```
-
-#### 设置实时参数
-
-```cpp
-bool SetRealtime(int rt_priority, int bind_cpu);
-```
-
-**参数**:
-- `rt_priority`: 线程优先级 [0-99]，99 最高，-1 禁用
-- `bind_cpu`: 绑定的 CPU 核心，-1 禁用
-
-**示例**:
-```cpp
-ctrl->SetRealtime(90, 1);  // 优先级 90，绑定 CPU 1
-```
-
-#### 启动 EtherCAT
-
-```cpp
-bool Start(std::string ifname, uint64_t cycle_ns, bool enable_dc);
-```
-
-**参数**:
-- `ifname`: 网卡名称 (如 "eth0")
-- `cycle_ns`: 循环周期 (纳秒)，1000000 = 1ms = 1000Hz
-- `enable_dc`: 是否启用分布式时钟
-
-**示例**:
-```cpp
-ctrl->Start("eth0", 1000000, true);  // 1ms 周期，启用 DC
-```
-
-#### 停止 EtherCAT
-
-```cpp
-void Stop();
-```
-
-### 执行器控制 API
-
-#### 使能执行器
-
-```cpp
+// 使能/禁能
 bool EnableActuator(const std::string& name);
-bool EnableAllActuator();
-```
-
-#### 禁用执行器
-
-```cpp
 bool DisableActuator(const std::string& name);
-bool DisableAllActuator();
-```
 
-#### 设置模式
-
-```cpp
+// 设置控制模式
 bool SetMode(const std::string& name, ActautorMode mode);
+
+// MIT 模式控制 (唯一的控制指令)
+void SetMitCmd(const std::string& name, float pos, float vel, float effort, float kp, float kd);
 ```
 
-**模式类型**:
-| 模式 | 值 | 说明 |
-|------|------|------|
-| MODE_CURRENT | 0 | 电流模式 |
-| MODE_CURRENT_RAMP | 1 | 电流斜坡模式 |
-| MODE_VELOCITY | 2 | 速度模式 |
-| MODE_VELOCITY_RAMP | 3 | 速度斜坡模式 |
-| MODE_POSITION | 4 | 位置模式 |
-| MODE_POSITION_RAMP | 5 | 位置斜坡模式 |
-| MODE_MIT | 6 | MIT 模式 (力控) |
-
-**示例**:
-```cpp
-ctrl->SetMode("joint3", xyber::ActautorMode::MODE_MIT);
-```
-
-#### 获取状态
+### 状态读取
 
 ```cpp
+float GetPosition(const std::string& name);   // rad
+float GetVelocity(const std::string& name);   // rad/s
+float GetEffort(const std::string& name);     // Nm
 ActautorState GetPowerState(const std::string& name);
 ActautorMode GetMode(const std::string& name);
 ```
 
-**状态类型**:
-| 状态 | 值 | 说明 |
+## 消息格式
+
+### MotorCommand.msg
+
+```bash
+# cmd=1: 使能电机
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 1, motor_id: 3}"
+
+# cmd=2: 禁能电机
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 2, motor_id: 3}"
+
+# cmd=3: 设置模式 (mode=6=MIT)
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 3, motor_id: 3, mode: 6}"
+
+# cmd=4: MIT控制 (位置+速度+力矩+刚度+阻尼)
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 3, q: 0.0, dq: 0.0, tau: 0.0, kp: 10.0, kd: 1.0}"
+```
+
+| 字段 | 类型 | 说明 |
 |------|------|------|
-| STATE_DISABLE | 0 | 禁用 |
-| STATE_ENABLE | 1 | 使能 |
-| STATE_CALIBRATION | 2 | 校准中 |
+| cmd | uint8 | 1=使能, 2=禁能, 3=设置模式, 4=MIT控制 |
+| motor_id | uint8 | 电机 CAN ID (1-8) |
+| mode | uint8 | 控制模式 (仅cmd=3时) |
+| q | float32 | 目标位置 (rad), MIT控制 |
+| dq | float32 | 目标速度 (rad/s), MIT控制 |
+| tau | float32 | 目标力矩 (Nm), MIT控制 |
+| kp | float32 | 刚度 (0-500), MIT控制 |
+| kd | float32 | 阻尼 (0-8), MIT控制 |
 
-#### 获取位置/速度/力矩
+### 控制模式 (通过 SetMode 设置)
 
-```cpp
-float GetPosition(const std::string& name);   // 返回 rad
-float GetVelocity(const std::string& name);   // 返回 rad/s
-float GetEffort(const std::string& name);    // 返回 Nm
-float GetTempure(const std::string& name);   // 返回 温度
-```
-
-#### MIT 模式控制 (核心)
-
-```cpp
-void SetMitCmd(const std::string& name, float pos, float vel, float effort, float kp, float kd);
-```
-
-**参数**:
-| 参数 | 单位 | 说明 |
+| Mode | 名称 | 说明 |
 |------|------|------|
-| pos | rad | 目标位置 |
-| vel | rad/s | 目标速度 |
-| effort | Nm | 目标力矩 |
-| kp | - | 刚度系数 |
-| kd | - | 阻尼系数 |
+| 0 | MODE_CURRENT | 电流环模式 |
+| 1 | MODE_CURRENT_RAMP | 电流环梯形加减速 |
+| 2 | MODE_VELOCITY | 速度环模式 |
+| 3 | MODE_VELOCITY_RAMP | 速度环梯形加减速 |
+| 4 | MODE_POSITION | 位置环模式 |
+| 5 | MODE_POSITION_RAMP | 位置环梯形加减速 |
+| 6 | MODE_MIT | MIT混合控制模式 (默认) |
 
-**示例**:
-```cpp
-// 位置 3.14rad，刚度 50，阻尼 1
-ctrl->SetMitCmd("joint3", 3.14f, 0.0f, 0.0f, 50.0f, 1.0f);
+## 控制方式
+
+### Topic 控制
+
+**控制流程**: 使能 → 设置模式 → MIT控制
+
+```bash
+# Step 1: 使能电机
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 1, motor_id: 3}" --once
+
+# Step 2: 设置模式为 MIT (mode=6)
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 3, motor_id: 3, mode: 6}" --once
+
+# Step 3: MIT 控制 (cmd=4, 包含力矩tau)
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 3, q: 0.0, dq: 0.0, tau: 0.0, kp: 10.0, kd: 1.0}" --once
+
+# 禁能电机
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 2, motor_id: 3}" --once
 ```
 
-#### 设置 MIT 参数
+**MIT控制参数说明**:
+- `q`: 目标位置 (rad)
+- `dq`: 目标速度 (rad/s)
+- `tau`: 目标力矩 (Nm)
+- `kp`: 刚度 (位置环增益)
+- `kd`: 阻尼 (速度环增益)
 
-```cpp
-void SetMitParam(const std::string& name, MitParam param);
+### Action 控制 (多电机)
+
+```bash
+rostopic pub /dcu_control/goal dcu_driver_pkg/DCUControlActionGoal \
+  '{goal: {joint_names: ["joint1", "joint2"], positions: [1.0, 2.0], velocities: [0, 0], efforts: [0, 0], stiffness: [10, 10], damping: [1, 1]}}' --once
 ```
 
-**MitParam 结构体**:
-```cpp
-struct MitParam {
-    float pos_min, pos_max;   // 位置限制
-    float vel_min, vel_max;   // 速度限制
-    float toq_min, toq_max;   // 力矩限制
-    float kp_min, kp_max;     // 刚度限制
-    float kd_min, kd_max;     // 阻尼限制
-};
+### 订阅话题
+
+```bash
+# 电机状态
+rostopic echo /joint_states
+
+# 查看所有话题
+rostopic list | grep dcu
+rostopic list | grep motor
 ```
-
-### IMU API
-
-```cpp
-DcuImu GetDcuImuData(const std::string& name);
-void ApplyDcuImuOffset(const std::string& name);
-```
-
-**DcuImu 结构体**:
-```cpp
-struct DcuImu {
-    float acc[3];      // 加速度
-    float gyro[3];      // 陀螺仪
-    float quat[4];      // 四元数
-};
-```
-
-### 原始 CANFD 数据
-
-```cpp
-void GetRawCanfdData(const std::string& actuator_name, CtrlChannel ch, uint8_t* data, size_t* len);
-```
-
-获取指定通道的原始 64 字节 CANFD 数据。
 
 ## 数据类型
 
@@ -267,7 +189,7 @@ enum class ActuatorType {
     POWER_FLOW_R86,   // R86 电机
     POWER_FLOW_R52,   // R52 电机
     POWER_FLOW_L28,   // L28 电机
-    OMNI_PICKER,      //  picker
+    OMNI_PICKER,      // OmniPicker
     UNKOWN,
 };
 ```
@@ -282,7 +204,7 @@ enum ActautorState : uint8_t {
 };
 ```
 
-### ActautorMode (控制模式)
+### ActautorMode (SDK定义)
 
 ```cpp
 enum ActautorMode : uint8_t {
@@ -292,9 +214,122 @@ enum ActautorMode : uint8_t {
     MODE_VELOCITY_RAMP = 3,
     MODE_POSITION = 4,
     MODE_POSITION_RAMP = 5,
-    MODE_MIT = 6,       // 力控模式
+    MODE_MIT = 6,
 };
 ```
+
+## 代码结构
+
+```
+dcu_driver_pkg/
+├── src/
+│   ├── dcu_driver_server.cpp      # 主节点 (统一 /motor/command 接口)
+│   ├── dcu_driver_client.cpp       # 测试客户端
+│   ├── dcu_control_node.cpp       # 简化版 Topic 节点
+│   ├── ethercat_scan.cpp          # EtherCAT 总线扫描
+│   └── dcu_can_test.cpp           # CAN 通信测试
+├── msg/
+│   └── MotorCommand.msg           # 电机控制消息 (cmd/motor_id/q/dq/tau/kp/kd)
+├── action/
+│   └── DCUControl.action          # Action 定义 (多电机控制)
+├── launch/
+│   ├── dcu_driver_server.launch   # 服务端启动
+│   └── dcu_driver_client.launch   # 客户端启动
+├── cfg/
+│   └── dcu_cfg.yaml               # 配置文件
+├── agibot_x1_infer/               # 嵌入式 RL 控制模块
+│   └── src/module/dcu_driver_module/
+│       └── xyber_controller/      # XyberController SDK
+└── CMakeLists.txt
+```
+
+## 运行
+
+### 1. 编译
+
+```bash
+cd ~/Desktop/Jetson_Nano/action_ws
+source /opt/ros/noetic/setup.bash
+catkin_make --pkg dcu_driver_pkg
+```
+
+### 2. 配置电机参数
+
+在 launch 文件或 ROS param 中配置电机列表：
+
+```yaml
+motors:
+  - name: "joint1"
+    ethercat_id: 1
+    can_node_id: 1
+    can_channel: "CTRL1"
+    actuator_type: "POWER_FLOW_R86"
+  - name: "joint2"
+    ethercat_id: 1
+    can_node_id: 2
+    can_channel: "CTRL1"
+    actuator_type: "POWER_FLOW_R86"
+```
+
+### 3. 启动服务端
+
+```bash
+source devel/setup.bash
+roslaunch dcu_driver_pkg dcu_driver_server.launch ethercat_if:=eth0
+```
+
+### 4. 验证
+
+```bash
+# 查看话题
+rostopic list | grep -E "(motor|joint|dcu)"
+
+# 监控状态
+rostopic echo /joint_states
+
+# 完整控制流程示例
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 1, motor_id: 3}"
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 3, motor_id: 3, mode: 6}"
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 3, q: 0.0, dq: 0.0, tau: 0.0, kp: 10.0, kd: 1.0}"
+```
+
+## CANFD 报文格式
+
+### 使能/失能帧
+
+| 字段 | 值 |
+|------|-----|
+| MSG ID | motor_id (1-8) |
+| DLC | 2 |
+| D0 | 0x01 (Cmd) |
+| D1 | 0x00 (失能) / 0x01 (使能) |
+
+### MIT 模式广播帧
+
+| 字段 | 值 |
+|------|-----|
+| MSG ID | 0 (广播) |
+| DLC | 64 字节 |
+
+每个电机根据 ID 取对应的 8 字节：
+
+| 字节 | 内容 |
+|------|------|
+| D0-D1 | Position [15:8][7:0] |
+| D2-D3 | Velocity [11:4][3:0] + Kp [11:8] |
+| D4-D5 | Kp [7:0] + Kd [11:8] |
+| D6-D7 | Kd [3:0] + Torque [11:8] |
+| D8-D15 | 电机 ID=2 的数据... |
+
+### 上行状态帧
+
+| 字段 | 值 |
+|------|-----|
+| MSG ID | motor_id |
+| DLC | 8 字节 |
+| D0-D1 | Position |
+| D2-D3 | Velocity + Current |
+| D4-D5 | Error Code + State + Heartbeat |
 
 ## 关键发现
 
@@ -322,69 +357,6 @@ DCU 不会主动发送 CANFD 报文。需要先发送命令，电机才会回传
 - 预编译测试程序 `canfd_forward_test` 使用 `while(1)` 循环持续发送 MIT 命令，工作正常
 - catkin 构建的节点单次调用 `SetMitCmd` 可能无法触发 DCU 转发
 - **解决方案**：启动一个后台线程持续发送 MIT 命令，Topic 回调只更新目标值
-
-## 代码结构
-
-```
-dcu_driver_pkg/
-├── src/
-│   ├── dcu_driver_server.cpp      # 主节点 (ROS Action + Topic)
-│   └── dcu_control_node.cpp      # 简化版 Topic 节点
-├── launch/
-│   ├── dcu_driver_server.launch   # 服务端启动
-│   └── dcu_driver_client.launch   # 客户端启动
-├── action/
-│   └── DCUControl.action          # Action 定义
-└── CMakeLists.txt
-```
-
-## 运行
-
-### 1. 启动服务端
-
-```bash
-source /opt/ros/noetic/setup.bash
-source devel/setup.bash
-roslaunch dcu_driver_pkg dcu_driver_server.launch ethercat_if:=eth0
-```
-
-### 2. Topic 控制 (推荐)
-
-```bash
-# 格式: [position, kp, kd]
-rostopic pub /dcu_cmd std_msgs/Float64MultiArray "data: [3.14, 50, 1]"
-```
-
-### 3. Action 控制
-
-```bash
-rostopic pub /dcu_control/goal dcu_driver_pkg/DCUControlActionGoal \
-  '{goal: {joint_names: ["joint3"], positions: [3.14], velocities: [0], efforts: [0], stiffness: [50], damping: [1]}}' --once
-```
-
-### 4. 监控状态
-
-```bash
-rostopic echo /joint_states
-```
-
-## CANFD 报文格式
-
-### MIT 模式 (8字节)
-
-| 字节 | 名称 | 说明 |
-|------|------|------|
-| 0-1 | Position | 位置 (float) |
-| 2-3 | Velocity/KP | 速度/刚度 |
-| 4-5 | Torque/KD | 力矩/阻尼 |
-| 6-7 | 保留 | - |
-
-### 常用命令
-
-| 命令 | 数据 | 说明 |
-|------|------|------|
-| SetMode | `0B 06` | 设置 MIT 模式 |
-| Enable | `01 01` | 使能电机 |
 
 ## 踩坑记录
 
@@ -436,6 +408,18 @@ sudo /home/jetson/Desktop/Jetson_Nano/action_ws/src/dcu_driver_pkg/agibot_x1_inf
 
 ## 维护
 
+### 编译
+
+```bash
+# 编译整个工作空间
+cd ~/Desktop/Jetson_Nano/action_ws
+source /opt/ros/noetic/setup.bash
+catkin_make
+
+# 只编译本包
+catkin_make --pkg dcu_driver_pkg
+```
+
 ### 清理进程
 
 ```bash
@@ -449,17 +433,10 @@ pkill -9 -f xyber
 rm -rf ~/.ros/log/*
 ```
 
-### 重新构建
-
-```bash
-cd ~/Desktop/Jetson_Nano/action_ws
-source /opt/ros/noetic/setup.bash
-catkin_make --pkg dcu_driver_pkg
-```
-
 ## 参考
 
-- XyberController SDK
+- [智元 PowerFlow R 系列执行器产品手册](https://www.agibot.com.cn/DOCS/PM/PFR)
+- XyberController SDK (agibot_x1_infer/)
 - SOEM (Simple Open EtherCAT Master)
 - ROS Action 通信机制
 - CANFD 协议

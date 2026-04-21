@@ -20,6 +20,12 @@ add_action_files(
   DCUControl.action
 )
 
+add_message_files(
+  DIRECTORY msg
+  FILES
+  MotorCommand.msg
+)
+
 generate_messages(
   DEPENDENCIES
   actionlib_msgs

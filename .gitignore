@@ -1,8 +1,10 @@
 # ROS
 action_ws/devel/
 action_ws/build/
+action_ws/install/
 ROS_Project/devel/
 ROS_Project/build/
+ROS_Project/install/
 *.pyc
 __pycache__/
 *.log
@@ -32,3 +34,9 @@ dist/
 build/
 venv/
 .venv/
+
+# EtherCAT (external dependency - clone separately)
+ethercat/
+
+# Embedded git repos (not submodules)
+action_ws/YbImuLib/.git/

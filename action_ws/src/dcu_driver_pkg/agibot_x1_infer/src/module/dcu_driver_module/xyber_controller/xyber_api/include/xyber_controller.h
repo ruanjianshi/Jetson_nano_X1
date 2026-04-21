@@ -139,6 +139,14 @@ class XyberController {
   float GetTempure(const std::string& name);
 
   /**
+   * @brief Get error string for an actuator
+   *
+   * @param name
+   * @return std::string error description
+   */
+  std::string GetErrorString(const std::string& name);
+
+  /**
    * @brief Get the Power State
    *
    * @param name

@@ -54,7 +54,19 @@ void PowerFlowR::SaveConfig() {
   send_buf_[1] = 123;  // Magic number for PowerFlowR
 }
 
-std::string PowerFlowR::GetErrorString() { return "None"; }
+std::string PowerFlowR::GetErrorString() {
+  uint8_t error_code = state_data_->error;
+  if (error_code == 0) return "None";
+  
+  std::string errors;
+  if (error_code & 0x1) errors += "ErrorBit0 ";
+  if (error_code & 0x2) errors += "ErrorBit1 ";
+  if (error_code & 0x4) errors += "ErrorBit2 ";
+  if (error_code & 0x8) errors += "ErrorBit3 ";
+  if (error_code & 0xF) errors += "(raw=" + std::to_string(error_code) + ") ";
+  
+  return errors.empty() ? "None" : errors;
+}
 
 void PowerFlowR::SetMode(ActautorMode mode) {
   current_mode_ = mode;
