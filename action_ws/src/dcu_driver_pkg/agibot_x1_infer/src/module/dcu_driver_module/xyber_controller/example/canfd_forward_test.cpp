@@ -140,19 +140,19 @@ int main(int argc, char* argv[]) {
     std::cout << "  This uses Cmd=0xFF (broadcast) to force DCU forwarding" << std::endl;
     std::cout << std::endl;
     
-    // for (int i = 0; i < 10 && g_running; ++i) {
-    //     float target_pos = (i % 2 == 0) ? 0.0f : 3.14f;
-    //     std::cout << "  Step " << i << ": Sending pos=" << target_pos << std::endl;
-    //     ctrl->SetMitCmd(motor_name, target_pos, 0.0f, 0.0f, 10.0f, 1.0f);
-    //     std::this_thread::sleep_for(500ms);
-    // }
-    
-    while (1) {
-        float target_pos = 1.57f; // Example position command
-        std::cout << "  Sending MIT pos=" << target_pos << std::endl;
+    for (int i = 0; i < 10 && g_running; ++i) {
+        float target_pos = (i % 2 == 0) ? 0.0f : 3.14f;
+        std::cout << "  Step " << i << ": Sending pos=" << target_pos << std::endl;
         ctrl->SetMitCmd(motor_name, target_pos, 0.0f, 0.0f, 10.0f, 1.0f);
-        std::this_thread::sleep_for(1ms);
+        std::this_thread::sleep_for(500ms);
     }
+    
+    // while (1) {
+    //     float target_pos = 1.57f; // Example position command
+    //     std::cout << "  Sending MIT pos=" << target_pos << std::endl;
+    //     ctrl->SetMitCmd(motor_name, target_pos, 0.0f, 0.0f, 10.0f, 1.0f);
+    //     std::this_thread::sleep_for(1ms);
+    // }
     std::cout << std::endl;
     std::cout << "========================================" << std::endl;
     std::cout << "  TEST COMPLETE" << std::endl;

@@ -100,7 +100,7 @@ class PowerFlowR : public xyber::Actuator {
   xyber::MitParam mit_param_;
   MitCmd* mit_cmd_ = nullptr;
   StateData* state_data_ = nullptr;
-  xyber::ActautorMode current_mode_ = xyber::MODE_CURRENT;
+  xyber::ActautorMode current_mode_ = xyber::MODE_MIT;
 };
 
 class PowerFlowL : public xyber::Actuator {
