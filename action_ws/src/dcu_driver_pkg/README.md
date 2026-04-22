@@ -46,6 +46,53 @@
 - 数据段波特率: 5Mbps
 - 采样点: 80% (仲裁段) / 75% (数据段)
 
+### 电机实际参数 (joint3 - PowerFlow R)
+
+通过 Python SDK 读取的电机实际参数：
+
+**基本信息**:
+| 参数 | 值 |
+|------|-----|
+| device_type | 4 |
+| serial_number | 0000395A464D |
+| fw_version | 329 |
+| can_node_id | 3 |
+| encoder_type | 3 |
+
+**MIT 协议限制**:
+| 参数 | 最小值 | 最大值 | 单位 |
+|------|--------|--------|------|
+| pos_min | -6.283 | 6.283 | rad |
+| pos_max | ±6.283 | ±6.283 | rad |
+| vel_min | -12.566 | 12.566 | rad/s |
+| vel_max | ±12.566 | ±12.566 | rad/s |
+| tor_min | -100 | 100 | Nm |
+| tor_max | ±100 | ±100 | Nm |
+| kp_min | 0 | 500 | - |
+| kp_max | 0 | 500 | - |
+| kd_min | 0 | 8 | - |
+| kd_max | 0 | 8 | - |
+
+**控制参数**:
+| 参数 | 值 |
+|------|-----|
+| ctrl_mode | 6 (MIT) |
+| current_ctrl_bandwidth | 1000 Hz |
+| current_limit | 20 A |
+| velocity_limit | 37.7 rad/s |
+| protect_over_speed | 62.83 rad/s |
+| protect_over_heat | 80°C |
+| protect_over_current | 15 A |
+
+**电机特性**:
+| 参数 | 值 |
+|------|-----|
+| reduction | 16.0 |
+| polar_pair | 14 |
+| phase_resistance | 0.08 Ω |
+| phase_inductance | 80 µH |
+| inertia | 0.000159 kg·m² |
+
 ## 架构
 
 ```
@@ -223,7 +270,7 @@ enum ActautorMode : uint8_t {
 ```
 dcu_driver_pkg/
 ├── src/
-│   ├── dcu_driver_server.cpp      # 主节点 (统一 /motor/command 接口)
+│   ├── dcu_driver_server.cpp      # 主节点 (多圈累加/持续发送)
 │   ├── dcu_driver_client.cpp       # 测试客户端
 │   ├── dcu_control_node.cpp       # 简化版 Topic 节点
 │   ├── ethercat_scan.cpp          # EtherCAT 总线扫描
@@ -242,6 +289,22 @@ dcu_driver_pkg/
 │       └── xyber_controller/      # XyberController SDK
 └── CMakeLists.txt
 ```
+
+### 功能特性
+
+#### 多圈位置累加
+
+驱动层实现了多圈位置累加功能，通过检测过零点自动计数圈数：
+
+```
+[joint3] pos=25.132 rad (raw=3.142), vel=0.003 rad/s, state=1, mode=6, revolutions=4
+```
+
+- `pos`: 累加后的多圈位置 (25.132 rad = 4圈 × 2π + 3.142 rad)
+- `raw`: 电机原始单圈位置 (±6.283 rad)
+- `revolutions`: 已转过的圈数
+
+**注意**: 给定目标位置 `q` 仍受电机固件限制 (±6.283 rad)，累加功能仅影响状态输出。
 
 ## 运行
 
@@ -273,9 +336,17 @@ motors:
 
 ### 3. 启动服务端
 
+**推荐配置** (关闭 DC 时钟提高稳定性):
+
 ```bash
 source devel/setup.bash
-roslaunch dcu_driver_pkg dcu_driver_server.launch ethercat_if:=eth0
+sudo roslaunch dcu_driver_pkg dcu_driver_server.launch ethercat_if:=eth0 enable_dc:=false
+```
+
+**高速模式** (启用 DC 时钟，周期 1ms):
+
+```bash
+sudo roslaunch dcu_driver_pkg dcu_driver_server.launch ethercat_if:=eth0 enable_dc:=true cycle_ns:=1000000
 ```
 
 ### 4. 验证
@@ -358,6 +429,27 @@ DCU 不会主动发送 CANFD 报文。需要先发送命令，电机才会回传
 - catkin 构建的节点单次调用 `SetMitCmd` 可能无法触发 DCU 转发
 - **解决方案**：启动一个后台线程持续发送 MIT 命令，Topic 回调只更新目标值
 
+### 5. 分布式时钟 (DC) 导致 EtherCAT 通信不稳定
+
+**现象**:
+```
+[WARN] wkc < expected_wkc , wkc: -1, expected_wkc: 3
+```
+
+**原因**: Jetson Nano 与 DCU 之间的 DC 时钟同步不稳定，导致 EtherCAT 通信周期性中断。
+
+**解决**: 关闭 DC 时钟同步
+
+```bash
+roslaunch dcu_driver_pkg dcu_driver_server.launch ethercat_if:=eth0 enable_dc:=false
+```
+
+**推荐配置**:
+```bash
+# 关闭 DC 时钟 + 降低循环频率 (2ms)
+roslaunch dcu_driver_pkg dcu_driver_server.launch cycle_ns:=2000000 enable_dc:=false
+```
+
 ## 踩坑记录
 
 ### 问题 1: PDO 大小不匹配
@@ -391,6 +483,28 @@ CmdType N5xyber13DcuSendPacketE size does not match. target 240, actual 0
 **原因**: DCU 需要电机的心跳响应来维持转发状态
 
 **解决**: 连接电机后测试
+
+### 问题 4: EtherCAT DC 时钟同步导致通信不稳定
+
+**现象**:
+```
+[WARN] wkc < expected_wkc , wkc: -1, expected_wkc: 3
+[ERROR] Failed to disable motor_id: 3
+```
+
+**原因**: Jetson Nano 与 DCU 之间的分布式时钟 (DC) 同步不稳定，导致 EtherCAT 周期性中断。
+
+**解决**: 关闭 DC 时钟同步
+
+```bash
+roslaunch dcu_driver_pkg dcu_driver_server.launch ethercat_if:=eth0 enable_dc:=false
+```
+
+**推荐配置**:
+```bash
+# 关闭 DC 时钟 + 降低循环频率 (2ms)
+roslaunch dcu_driver_pkg dcu_driver_server.launch cycle_ns:=2000000 enable_dc:=false
+```
 
 ## 测试工具
 
@@ -440,3 +554,18 @@ rm -rf ~/.ros/log/*
 - SOEM (Simple Open EtherCAT Master)
 - ROS Action 通信机制
 - CANFD 协议
+
+
+
+## 实时测试
+
+jetson@nano:~/Desktop/Jetson_Nano/action_ws$ sudo nvpmodel -m 0 # 切换到最大性能模式 (MAXN)
+clocks # 锁定CPU、GPU频率到最高[sudo] password for jetson: 
+Sorry, try again.
+[sudo] password for jetson: 
+jetson@nano:~/Desktop/Jetson_Nano/action_ws$ sudo jetson_clocks
+jetson@nano:~/Desktop/Jetson_Nano/action_ws$ sudo cyclictest -t1 -p 99 -i 1000 -l 100000 -m -q
+WARN: cyclictest was not built with the numa option
+# /dev/cpu_dma_latency set to 0us
+T: 0 (33915) P:99 I:1000 C: 100000 Min:      5 Act:    7 Avg:    7 Max:      98
+jetson@nano:~/Desktop/Jetson_Nano/action_ws$ 

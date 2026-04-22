@@ -2,6 +2,7 @@
   <arg name="ethercat_if" default="eth0"/>
   <arg name="enable_dc" default="true"/>
   <arg name="cycle_ns" default="1000000"/>
+  <arg name="run_auto_test" default="false"/>   <!-- 新增参数 -->
 
   <rosparam param="motors">
     - name: "joint3"
@@ -14,6 +15,7 @@
   <param name="ethercat_if" value="$(arg ethercat_if)"/>
   <param name="enable_dc" value="$(arg enable_dc)"/>
   <param name="cycle_ns" value="$(arg cycle_ns)"/>
+  <param name="run_auto_test" value="$(arg run_auto_test)"/>
 
   <node name="dcu_driver_server" 
         pkg="dcu_driver_pkg" 

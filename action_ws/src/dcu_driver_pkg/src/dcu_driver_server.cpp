@@ -111,6 +111,12 @@ public:
         // 启动ROS Action服务 (用于多电机控制)
         action_server_.start();
         
+        // 初始化圈数计数器和上一位置
+        for (const auto& name : motor_names_) {
+            revolution_counts_[name] = 0;
+            last_positions_[name] = 0.0f;
+        }
+        
         ROS_INFO("DCU Driver Server started (Zhiyuan Protocol)");
     }
 
@@ -210,6 +216,32 @@ public:
     }
 
     // =========================================================================
+    // 计算多圈累加位置
+    // =========================================================================
+    // 通过检测过零点来累加圈数
+    // 当位置从正转负（越过 +π 到 -π）或从负转正（越过 -π 到 +π）时更新圈数
+    // =========================================================================
+    float getCumulativePosition(const std::string& name, float raw_pos)
+    {
+        float last_pos = last_positions_[name];
+        float diff = raw_pos - last_pos;
+        
+        // 检测过零点 (跳变超过 π)
+        if (diff > M_PI) {
+            // 从正到负转，圈数减1
+            revolution_counts_[name]--;
+        } else if (diff < -M_PI) {
+            // 从负到正转，圈数加1
+            revolution_counts_[name]++;
+        }
+        
+        last_positions_[name] = raw_pos;
+        
+        // 返回累加位置 = 圈数 * 2π + 当前位置
+        return revolution_counts_[name] * 2.0f * M_PI + raw_pos;
+    }
+
+    // =========================================================================
     // 初始化XyberController单例
     // =========================================================================
     bool init()
@@ -260,7 +292,7 @@ public:
         }
 
         // 设置实时优先级 (RT thread priority 90, bind to CPU 1)
-        xyber_ctrl_->SetRealtime(90, 1);
+        xyber_ctrl_->SetRealtime(99, 1);
 
         // 启动EtherCAT通信
         if (!xyber_ctrl_->Start(ifname, cycle_ns, enable_dc)) {
@@ -277,6 +309,15 @@ public:
         // 启动状态监控线程
         startStateMonitor();
         
+
+        // 自动测试开关
+        bool run_test = false;
+        nh_.param<bool>("run_auto_test", run_test, false);
+        if (run_test) {
+            std::thread test_thread(&DCUDriverServer::testMotor, this);
+            test_thread.detach();
+        }
+
         return true;
     }
 
@@ -349,7 +390,7 @@ public:
                     ROS_ERROR("Failed to enable motor_id: %d", msg->motor_id);
                     return;
                 }
-                ROS_INFO("Motor ID %d enabled", msg->motor_id);
+                //ROS_INFO("Motor ID %d enabled", msg->motor_id);
                 break;
             }
 
@@ -361,7 +402,7 @@ public:
                     ROS_ERROR("Failed to disable motor_id: %d", msg->motor_id);
                     return;
                 }
-                ROS_INFO("Motor ID %d disabled", msg->motor_id);
+                //ROS_INFO("Motor ID %d disabled", msg->motor_id);
                 break;
             }
 
@@ -374,7 +415,7 @@ public:
                     ROS_ERROR("Failed to set mode %d for motor_id: %d", msg->mode, msg->motor_id);
                     return;
                 }
-                ROS_INFO("Motor ID %d mode set to %d", msg->motor_id, msg->mode);
+                //ROS_INFO("Motor ID %d mode set to %d", msg->motor_id, msg->mode);
                 break;
             }
 
@@ -382,7 +423,10 @@ public:
             // cmd=4: MIT控制 (位置+速度+力矩+刚度+阻尼)
             // =================================================================
             case 4: {
-                // SetMitCmd参数: pos, vel, effort, kp, kd
+                if (name.empty()) {
+                    ROS_ERROR("MIT cmd failed: Unknown motor_id %d", msg->motor_id);
+                    return;
+                }
                 xyber_ctrl_->SetMitCmd(name, msg->q, msg->dq, msg->tau, msg->kp, msg->kd);
                 ROS_INFO("MIT cmd: ID=%d q=%.3f dq=%.3f tau=%.3f kp=%.1f kd=%.1f",
                          msg->motor_id, msg->q, msg->dq, msg->tau, msg->kp, msg->kd);
@@ -436,8 +480,9 @@ public:
             xyber_ctrl_->SetMitCmd(name, pos, 0.0f, 0.0f, kp, kd);
             ROS_INFO("Action: %s pos=%.3f kp=%.1f kd=%.1f", name.c_str(), pos, kp, kd);
             
-            // 读取当前状态
-            feedback.current_positions.push_back(xyber_ctrl_->GetPosition(name));
+            // 读取当前状态 (使用累加位置)
+            float raw_pos = xyber_ctrl_->GetPosition(name);
+            feedback.current_positions.push_back(getCumulativePosition(name, raw_pos));
             feedback.current_velocities.push_back(xyber_ctrl_->GetVelocity(name));
             feedback.current_efforts.push_back(xyber_ctrl_->GetEffort(name));
         }
@@ -466,7 +511,8 @@ public:
         // 遍历所有电机,读取状态
         for (const auto& name : motor_names_) {
             joint_state.name.push_back(name);
-            joint_state.position.push_back(xyber_ctrl_->GetPosition(name));
+            float raw_pos = xyber_ctrl_->GetPosition(name);
+            joint_state.position.push_back(getCumulativePosition(name, raw_pos));
             joint_state.velocity.push_back(xyber_ctrl_->GetVelocity(name));
             joint_state.effort.push_back(xyber_ctrl_->GetEffort(name));
         }
@@ -485,14 +531,15 @@ public:
             ROS_INFO("State monitor thread started");
             while (is_running_ && ros::ok()) {
                 for (const auto& name : motor_names_) {
-                    float pos = xyber_ctrl_->GetPosition(name);
+                    float raw_pos = xyber_ctrl_->GetPosition(name);
+                    float pos = getCumulativePosition(name, raw_pos);
                     float vel = xyber_ctrl_->GetVelocity(name);
                     float effort = xyber_ctrl_->GetEffort(name);
                     xyber::ActautorState state = xyber_ctrl_->GetPowerState(name);
                     xyber::ActautorMode mode = xyber_ctrl_->GetMode(name);
                     std::string error = xyber_ctrl_->GetErrorString(name);
-                    ROS_INFO_THROTTLE(1.0, "[%s] pos=%.3f rad, vel=%.3f rad/s, effort=%.3f Nm, state=%d, mode=%d, error=%s",
-                                      name.c_str(), pos, vel, effort, (int)state, (int)mode, error.c_str());
+                    ROS_INFO_THROTTLE(1.0, "[%s] pos=%.3f rad (raw=%.3f), vel=%.3f rad/s, effort=%.3f Nm, state=%d, mode=%d, revolutions=%d, error=%s",
+                                      name.c_str(), pos, raw_pos, vel, effort, (int)state, (int)mode, revolution_counts_[name], error.c_str());
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
@@ -516,7 +563,139 @@ public:
             rate.sleep();
         }
     }
+    void testMotor()
+    {
+        // 等待 EtherCAT 完全稳定（避免刚启动时通信未就绪）
+        ros::Duration(3.0).sleep();
 
+        ROS_INFO("========== Motor Auto Test Started ==========");
+
+        // 遍历所有电机进行测试
+        for (const auto& name : motor_names_) {
+            ROS_INFO("Testing motor: %s", name.c_str());
+
+            bool test_passed = true;  // 整体测试结果标志
+
+            // -------------------------------------------------------------
+            // 1. 使能电机
+            // -------------------------------------------------------------
+            ROS_INFO("  -> Step 1: Enabling motor...");
+            
+            // 记录使能前的状态
+            xyber::ActautorState state_before = xyber_ctrl_->GetPowerState(name);
+            ROS_INFO("     State before enable: %d", static_cast<int>(state_before));
+
+            // 调用使能
+            bool enable_ret = xyber_ctrl_->EnableActuator(name);
+            if (!enable_ret) {
+                ROS_ERROR("  -> EnableActuator() returned FALSE for %s", name.c_str());
+                test_passed = false;
+            } else {
+                ROS_INFO("     EnableActuator() returned TRUE");
+            }
+
+            // 等待状态更新（给通信周期一些时间）
+            ros::Duration(1.0).sleep();
+
+            // 读取使能后的状态
+            xyber::ActautorState state_after = xyber_ctrl_->GetPowerState(name);
+            ROS_INFO("     State after enable: %d", static_cast<int>(state_after));
+
+            // 判断是否真正使能成功
+            if (static_cast<int>(state_after) == 1) {  // 假设枚举值为 1
+                ROS_INFO("  -> [PASS] Motor enabled successfully.");
+            } else {
+                ROS_ERROR("  -> [FAIL] Motor enable failed (state=%d, expected=1).", 
+                        static_cast<int>(state_after));
+                test_passed = false;
+            }
+
+            // 如果使能失败，跳过后续测试，直接进行禁能清理
+            if (!test_passed) {
+                ROS_WARN("  -> Skipping remaining tests due to enable failure.");
+                // 尝试禁能（即使未使能，调用也无害）
+                xyber_ctrl_->DisableActuator(name);
+                continue;
+            }
+
+            // -------------------------------------------------------------
+            // 2. 设置控制模式为 MIT（模式6）
+            // -------------------------------------------------------------
+            ROS_INFO("  -> Step 2: Setting mode to MIT (6)...");
+            bool set_mode_ret = xyber_ctrl_->SetMode(name, xyber::ActautorMode::MODE_MIT);
+            if (!set_mode_ret) {
+                ROS_WARN("     SetMode() returned FALSE, but motor may already be in MIT mode.");
+                // 注意：某些情况下 SetMode 返回 false 但实际模式已是 MIT，这里我们读取一下确认
+            }
+
+            ros::Duration(0.3).sleep();
+            xyber::ActautorMode current_mode = xyber_ctrl_->GetMode(name);
+            ROS_INFO("     Current mode: %d (6 = MIT)", static_cast<int>(current_mode));
+            if (current_mode == xyber::ActautorMode::MODE_MIT) {
+                ROS_INFO("  -> [PASS] Mode is MIT.");
+            } else {
+                ROS_WARN("  -> [WARN] Mode is NOT MIT (actual=%d).", static_cast<int>(current_mode));
+                // 模式不对不直接判定测试失败，因为后续控制可能仍可用
+            }
+
+            // -------------------------------------------------------------
+            // (可选) 3. 发送简单位置指令并验证响应
+            // -------------------------------------------------------------
+            // 你可以取消注释以下代码，增加运动验证
+            /*
+            ROS_INFO("  -> Step 3: Sending test position command (pos=0.5 rad)...");
+            float target_pos = 0.5f;
+            float kp = 20.0f;
+            float kd = 1.0f;
+            xyber_ctrl_->SetMitCmd(name, target_pos, 0.0f, 0.0f, kp, kd);
+            ros::Duration(1.5).sleep();
+
+            float pos = xyber_ctrl_->GetPosition(name);
+            float vel = xyber_ctrl_->GetVelocity(name);
+            float eff = xyber_ctrl_->GetEffort(name);
+            ROS_INFO("     After command: pos=%.3f rad, vel=%.3f rad/s, eff=%.3f Nm", pos, vel, eff);
+
+            // 简单判断：位置是否向目标值移动（不要求精确到达，因为刚度低可能有误差）
+            if (std::abs(pos - target_pos) < 0.3f) {
+                ROS_INFO("  -> [PASS] Position is close to target.");
+            } else {
+                ROS_WARN("  -> [WARN] Position not reaching target (expected ~%.2f, got %.2f)", target_pos, pos);
+            }
+
+            // 回零
+            ROS_INFO("  -> Moving back to 0.0 rad...");
+            xyber_ctrl_->SetMitCmd(name, 0.0f, 0.0f, 0.0f, kp, kd);
+            ros::Duration(1.5).sleep();
+            */
+
+            // -------------------------------------------------------------
+            // 4. 禁能电机
+            // -------------------------------------------------------------
+            ROS_INFO("  -> Step 4: Disabling motor...");
+            bool disable_ret = xyber_ctrl_->DisableActuator(name);
+            ros::Duration(0.5).sleep();
+            xyber::ActautorState state_disabled = xyber_ctrl_->GetPowerState(name);
+            ROS_INFO("     State after disable: %d", static_cast<int>(state_disabled));
+            if (static_cast<int>(state_disabled) != 1) {
+                ROS_INFO("  -> [PASS] Motor disabled successfully.");
+            } else {
+                ROS_WARN("  -> [WARN] Motor still enabled after disable command.");
+            }
+
+            // -------------------------------------------------------------
+            // 总结
+            // -------------------------------------------------------------
+            if (test_passed) {
+                ROS_INFO("  -> [OVERALL RESULT] Test PASSED for %s", name.c_str());
+            } else {
+                ROS_ERROR("  -> [OVERALL RESULT] Test FAILED for %s", name.c_str());
+            }
+            ROS_INFO("----------------------------------------");
+        }
+
+        ROS_INFO("========== Motor Auto Test Finished ==========");
+    
+    }
 private:
     ros::NodeHandle nh_;                                          // ROS节点句柄
     actionlib::SimpleActionServer<dcu_driver_pkg::DCUControlAction> action_server_;  // Action服务
@@ -529,6 +708,10 @@ private:
     std::unordered_map<uint8_t, std::string> motor_id_map_;       // motor_id → name 映射表
     std::thread state_monitor_thread_;                            // 状态监控线程
     bool is_running_;                                             // 运行状态标志
+    
+    std::unordered_map<std::string, int> revolution_counts_;     // 圈数计数器
+    std::unordered_map<std::string, float> last_positions_;        // 上一时刻位置
+    const float POS_LIMIT = 6.283185307f;                         // 位置限制 ±2π
 };
 
 // =============================================================================
