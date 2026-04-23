@@ -29,18 +29,21 @@ Jetson_Nano/
 │   └── src/
 │       ├── yolov11_pkg/         # YOLOv11 GPU 推理包
 │       ├── sim2real_pkg/        # PT→ONNX 转换 + 部署包
-│       ├── dcu_driver_pkg/     # EtherCAT DCU 电机驱动
-│       ├── mcp2515_can_driver/  # SPI-CAN 驱动 (MCP2515)
-│       ├── yb_imu_driver/       # 九轴 IMU 驱动
-│       ├── my_action_pkg/       # GPIO/I2C/Serial/SPI/PWM 示例
-│       ├── opencv_cuda_pkg/    # OpenCV CUDA 处理
-│       └── maita_can_comm/      # CAN 通信
+│       ├── dcu_driver_pkg/       # EtherCAT DCU 电机驱动
+│       ├── mcp2515_can_driver/   # SPI-CAN 驱动 (MCP2515)
+│       ├── yb_imu_driver/        # 九轴 IMU 驱动
+│       ├── my_action_pkg/        # GPIO/I2C/Serial/SPI/PWM 示例
+│       ├── opencv_cuda_pkg/     # OpenCV CUDA 处理
+│       └── maita_can_comm/       # CAN 通信
 ├── ROS_Project/                  # 主 ROS 项目
 ├── ThreadPoolProject/           # C++ 多线程测试 (C++20)
-├── data/                        # 数据存储
-├── tests/                       # 测试文件
+├── code_design_sample/           # C++ 代码规范示例 (参考学习)
+├── data/                         # 数据存储
+├── tests/                        # 测试文件
 ├── scripts/                      # 工具脚本
-└── yolo11n.pt                   # YOLOv11 nano 模型
+├── README/                       # 开发文档
+├── AGENTS.md                     # AI 编码规范 (供 AI 使用)
+└── yolo11n.pt                    # YOLOv11 nano 模型
 ```
 
 ## 软件环境
@@ -346,6 +349,40 @@ echo "1" | ./build/multithread_test
 
 ---
 
+### code_design_sample - C++ 代码规范示例
+
+**功能**: 符合 C++ 工程规范的示例代码库，供 AI 和开发者参考学习
+
+**目录结构**:
+```
+code_design_sample/
+├── CLAUDE.md              # AI 行为准则
+├── CODING_STANDARDS.md    # C++ 编码规范 v3.0.0
+├── include/code_project/
+│   ├── core/             # 核心类型 (status_t, result_t)
+│   └── driver/            # 驱动示例 (sensor_xxx)
+├── src/driver/            # 完整实现
+├── tests/driver/          # 单元测试
+└── docs/adr/              # 架构决策记录
+```
+
+**关键模式示例**:
+| 模式 | 文件 | 说明 |
+|------|------|------|
+| `_t` 命名 | `sensor_types.h` | sensor_err_t, sensor_state_t |
+| `enum class` | `sensor_types.h` | 强类型错误码 |
+| Pimpl | `sensor_impl.h` | `_impl_t` + `_priv_t` |
+| RAII | `sensor_impl.cpp` | std::unique_ptr 管理资源 |
+| 线程安全 | `sensor_impl.cpp` | std::mutex 保护状态 |
+| C 接口 | `sensor_c.h` | extern "C" 句柄式 API |
+
+**参考价值**:
+- AI 编程时自动对齐项目规范
+- 新开发者学习代码风格
+- 代码评审时对照检查
+
+---
+
 ## 性能基准
 
 ### YOLOv11 在 Jetson Nano 4GB
@@ -395,6 +432,20 @@ roslaunch dcu_driver_pkg dcu_driver_server.launch enable_dc:=false
 
 ## 开发指南
 
+### AI 编码规范
+
+项目为 AI 助手提供了专门的编码规范文件：
+
+- **AGENTS.md** - AI 行为准则和构建命令
+- **code_design_sample/CLAUDE.md** - AI Hard Facts 约束
+- **code_design_sample/CODING_STANDARDS.md** - C++ 规范 v3.0.0
+
+**AI 上下文注入顺序建议**:
+1. `AGENTS.md` - 建立工作流预期
+2. `code_design_sample/CLAUDE.md` - 核心硬约束
+3. `code_design_sample/CODING_STANDARDS.md` - 代码结构
+4. `code_design_sample/include/code_project/driver/sensor_impl.h` - 模式参考
+
 ### 代码风格
 
 **Python**:
@@ -405,8 +456,9 @@ roslaunch dcu_driver_pkg dcu_driver_server.launch enable_dc:=false
 
 **C++**:
 - 4 空格缩进
-- 命名: PascalCase (类), camelCase (函数), snake_case (变量)
-- 头文件: `#include "path.h"`
+- 命名体系: `_t` (类型), `_impl_t` (实现), `_base_t` (基类), `_v` (变量)
+- RAII 资源管理
+- 禁止裸指针 new/delete
 
 ### 构建命令
 
@@ -423,6 +475,19 @@ cd ThreadPoolProject && make clean
 
 ---
 
+## 开发文档
+
+详细开发文档位于 `README/` 目录：
+
+| 文档 | 说明 |
+|------|------|
+| `Jetson_Nano_B01_系统架构文档.md` | 系统架构、CUDA 环境、推理方案对比 |
+| `PyTorch_TensorFlow_安装指南.md` | 深度学习框架安装教程 |
+| `YOLOv11_快速开始.md` | YOLOv11 使用指南 |
+| `项目管理.md` | 项目管理、模块说明 |
+
+---
+
 ## 参考资源
 
 - [NVIDIA Jetson Nano](https://developer.nvidia.com/embedded/jetson-nano)
@@ -430,8 +495,9 @@ cd ThreadPoolProject && make clean
 - [ROS Noetic 文档](http://wiki.ros.org/noetic)
 - [智元 PowerFlow 执行器](https://www.agibot.com.cn/DOCS/PM/PFR)
 - [SOEM EtherCAT Master](https://github.com/OpenEtherCATsociety/SOEM)
+- [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/)
 
 ---
 
 **最后更新**: 2026-04-23
-**文档版本**: v1.0
+**文档版本**: v2.0
