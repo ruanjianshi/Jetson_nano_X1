@@ -1,15 +1,38 @@
 <launch>
   <arg name="ethercat_if" default="eth0"/>
-  <arg name="enable_dc" default="true"/>
+  <arg name="enable_dc" default="false"/>
   <arg name="cycle_ns" default="1000000"/>
-  <arg name="run_auto_test" default="false"/>   <!-- 新增参数 -->
+  <arg name="run_auto_test" default="false"/>
 
   <rosparam param="motors">
-    - name: "joint3"
+    - name: "joint1"
       ethercat_id: 1
       can_node_id: 3
       can_channel: "CTRL1"
       actuator_type: "POWER_FLOW_R86"
+      torque_limit: 100.0
+      velocity_limit: 37.7
+    - name: "joint2"
+      ethercat_id: 1
+      can_node_id: 2
+      can_channel: "CTRL1"
+      actuator_type: "POWER_FLOW_R86"
+      torque_limit: 100.0
+      velocity_limit: 37.7
+    - name: "joint3"
+      ethercat_id: 1
+      can_node_id: 3
+      can_channel: "CTRL2"
+      actuator_type: "POWER_FLOW_R52"
+      torque_limit: 50.0
+      velocity_limit: 25.1
+    - name: "joint4"
+      ethercat_id: 1
+      can_node_id: 5
+      can_channel: "CTRL2"
+      actuator_type: "POWER_FLOW_R52"
+      torque_limit: 50.0
+      velocity_limit: 25.1
   </rosparam>
 
   <param name="ethercat_if" value="$(arg ethercat_if)"/>

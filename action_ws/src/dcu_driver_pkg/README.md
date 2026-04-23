@@ -25,8 +25,28 @@
 
 - **平台**: Jetson Nano B01 (4GB RAM, aarch64)
 - **DCU**: 智元科技 X1 域控制器 (EtherCAT to CANFD 网关)
-- **电机**: PowerFlow R86-3 / R86-2 / R52
+- **电机**: PowerFlow R86-2 (x2) + R52 (x2)
 - **通信**: EtherCAT (Jetson Nano) → DCU → CANFD (电机)
+
+### 硬件连接
+
+```
+DCU CTRL1 通道 → 串联 R86-2 #1 (CAN ID=3) + R86-2 #2 (CAN ID=2)
+DCU CTRL2 通道 → 串联 R52 #1 (CAN ID=3) + R52 #2 (CAN ID=5)
+```
+
+### 电机参数
+
+| 参数 | R86-2 | R52 |
+|------|-------|-----|
+| 减速比 | 16 | 36 |
+| 极对数 | 14 | 7 |
+| 力矩系数 | 1.366 Nm/A | 2.040 Nm/A |
+| 额定转矩 | 20 Nm | 6 Nm |
+| 峰值转矩 | 80 Nm | 19 Nm |
+| 电流限幅 | 20 A | 8 A |
+| 速度限幅 | 37.7 rad/s | 25.1 rad/s |
+| 力矩限幅 | ±100 Nm | ±50 Nm |
 
 ## 协议参数
 
@@ -136,29 +156,48 @@ ActautorMode GetMode(const std::string& name);
 ### MotorCommand.msg
 
 ```bash
-# cmd=1: 使能电机
-rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 1, motor_id: 3}"
+# 使能电机 (指定通道和型号)
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 1, motor_id: 3, channel: 1, motor_type: 'POWER_FLOW_R86'}"
 
-# cmd=2: 禁能电机
-rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 2, motor_id: 3}"
+# 设置MIT模式
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 3, motor_id: 3, channel: 1, mode: 6}"
 
-# cmd=3: 设置模式 (mode=6=MIT)
-rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 3, motor_id: 3, mode: 6}"
-
-# cmd=4: MIT控制 (位置+速度+力矩+刚度+阻尼)
-rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 3, q: 0.0, dq: 0.0, tau: 0.0, kp: 10.0, kd: 1.0}"
+# MIT控制
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 3, channel: 1, q: 0.5, kp: 20.0, kd: 2.0}"
 ```
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | cmd | uint8 | 1=使能, 2=禁能, 3=设置模式, 4=MIT控制 |
 | motor_id | uint8 | 电机 CAN ID (1-8) |
+| channel | uint8 | CAN通道: 1=CTRL1, 2=CTRL2, 3=CTRL3 |
+| motor_type | string | 电机型号: POWER_FLOW_R86/R52/R28 (可选,用于校验) |
 | mode | uint8 | 控制模式 (仅cmd=3时) |
 | q | float32 | 目标位置 (rad), MIT控制 |
 | dq | float32 | 目标速度 (rad/s), MIT控制 |
 | tau | float32 | 目标力矩 (Nm), MIT控制 |
 | kp | float32 | 刚度 (0-500), MIT控制 |
 | kd | float32 | 阻尼 (0-8), MIT控制 |
+
+### CAN通道常量
+
+| 常量 | 值 | 说明 |
+|------|---|------|
+| CHANNEL_CTRL1 | 1 | CTRL1通道 (连接R86-2) |
+| CHANNEL_CTRL2 | 2 | CTRL2通道 (连接R52) |
+| CHANNEL_CTRL3 | 3 | CTRL3通道 |
+
+### 电机定位
+
+电机通过 `channel + motor_id` 组合精确定位，支持型号校验：
+
+```bash
+# CTRL1通道 R86-2电机 (motor_id=3)
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 3, channel: 1, motor_type: 'POWER_FLOW_R86', q: 0.5, kp: 20.0, kd: 2.0}"
+
+# CTRL2通道 R52电机 (motor_id=5)
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 5, channel: 2, motor_type: 'POWER_FLOW_R52', q: 0.0, kp: 10.0, kd: 1.0}"
+```
 
 ### 控制模式 (通过 SetMode 设置)
 
@@ -179,18 +218,36 @@ rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 3, q
 **控制流程**: 使能 → 设置模式 → MIT控制
 
 ```bash
-# Step 1: 使能电机
-rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 1, motor_id: 3}" --once
+# Step 1: 使能电机 (指定通道+型号)
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 1, motor_id: 2, channel: 1, motor_type: 'POWER_FLOW_R86'}" -1
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 1, motor_id: 3, channel: 1, motor_type: 'POWER_FLOW_R86'}" -1
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 1, motor_id: 3, channel: 2, motor_type: 'POWER_FLOW_R52'}" -1
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 1, motor_id: 5, channel: 2, motor_type: 'POWER_FLOW_R52'}" -1
 
 # Step 2: 设置模式为 MIT (mode=6)
-rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 3, motor_id: 3, mode: 6}" --once
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 3, motor_id: 2, channel: 1, mode: 6}" -1
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 3, motor_id: 3, channel: 1, mode: 6}" -1
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 3, motor_id: 3, channel: 2, mode: 6}" -1
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 3, motor_id: 5, channel: 2, mode: 6}" -1
 
-# Step 3: MIT 控制 (cmd=4, 包含力矩tau)
-rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 3, q: 0.0, dq: 0.0, tau: 0.0, kp: 10.0, kd: 1.0}" --once
+# Step 3: MIT 控制 (持续发送)
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 2, channel: 1, q: 0.0, kp: 10.0, kd: 1.0}" -1
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 3, channel: 1, q: 0.0, kp: 10.0, kd: 1.0}" -1
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 3, channel: 2, q: 0.0, kp: 10.0, kd: 1.0}" -1
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 5, channel: 2, q: 0.0, kp: 10.0, kd: 1.0}" -1
 
 # 禁能电机
-rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 2, motor_id: 3}" --once
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 2, motor_id: 2, channel: 1}" -1
 ```
+
+### 电机通道映射
+
+| 通道 | 电机类型 | motor_id | 名称 |
+|------|---------|----------|------|
+| CTRL1 (1) | R86-2 #1 | 3 | joint1 |
+| CTRL1 (1) | R86-2 #2 | 2 | joint2 |
+| CTRL2 (2) | R52 #1 | 3 | joint3 |
+| CTRL2 (2) | R52 #2 | 5 | joint4 |
 
 **MIT控制参数说明**:
 - `q`: 目标位置 (rad)
@@ -340,16 +397,52 @@ motors:
 
 ```bash
 source devel/setup.bash
-sudo roslaunch dcu_driver_pkg dcu_driver_server.launch ethercat_if:=eth0 enable_dc:=false
+roslaunch dcu_driver_pkg dcu_driver_server.launch ethercat_if:=eth0 enable_dc:=false
 ```
 
 **高速模式** (启用 DC 时钟，周期 1ms):
 
 ```bash
-sudo roslaunch dcu_driver_pkg dcu_driver_server.launch ethercat_if:=eth0 enable_dc:=true cycle_ns:=1000000
+roslaunch dcu_driver_pkg dcu_driver_server.launch ethercat_if:=eth0 enable_dc:=true cycle_ns:=1000000
 ```
 
-### 4. 验证
+### 4. 配置电机参数
+
+在 launch 文件或 ROS param 中配置电机列表：
+
+```yaml
+motors:
+  - name: "joint1"
+    ethercat_id: 1
+    can_node_id: 3
+    can_channel: "CTRL1"
+    actuator_type: "POWER_FLOW_R86"
+    torque_limit: 100.0
+    velocity_limit: 37.7
+  - name: "joint2"
+    ethercat_id: 1
+    can_node_id: 2
+    can_channel: "CTRL1"
+    actuator_type: "POWER_FLOW_R86"
+    torque_limit: 100.0
+    velocity_limit: 37.7
+  - name: "joint3"
+    ethercat_id: 1
+    can_node_id: 3
+    can_channel: "CTRL2"
+    actuator_type: "POWER_FLOW_R52"
+    torque_limit: 50.0
+    velocity_limit: 25.1
+  - name: "joint4"
+    ethercat_id: 1
+    can_node_id: 5
+    can_channel: "CTRL2"
+    actuator_type: "POWER_FLOW_R52"
+    torque_limit: 50.0
+    velocity_limit: 25.1
+```
+
+### 5. 验证
 
 ```bash
 # 查看话题
@@ -359,9 +452,9 @@ rostopic list | grep -E "(motor|joint|dcu)"
 rostopic echo /joint_states
 
 # 完整控制流程示例
-rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 1, motor_id: 3}"
-rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 3, motor_id: 3, mode: 6}"
-rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 3, q: 0.0, dq: 0.0, tau: 0.0, kp: 10.0, kd: 1.0}"
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 1, motor_id: 2, channel: 1}" -1
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 3, motor_id: 2, channel: 1, mode: 6}" -1
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 2, channel: 1, q: 0.0, kp: 10.0, kd: 1.0}" -r 10
 ```
 
 ## CANFD 报文格式
