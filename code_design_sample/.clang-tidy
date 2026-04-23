@@ -1,0 +1,19 @@
+Checks: >
+  clang-diagnostic-*,
+  clang-analyzer-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  -modernize-use-trailing-return-type,
+  -readability-magic-numbers,
+  -readability-identifier-length
+
+CheckOptions:
+  - key: readability-identifier-length.IdentifierLength
+    value: '3'
+  - key: readability-identifier-length.VariableName
+    value: '3'
+  - key: readability-identifier-length.ParameterName
+    value: '3'
+  - key: readability-identifier-length.MemberVariableName
+    value: '3'
