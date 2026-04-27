@@ -45,6 +45,7 @@
 - `include/`
 - `src/`
 - `tests/`
+- `log/`
 - `tools/`
 
 以下内容默认不强制适用：
@@ -335,20 +336,49 @@ enum class sensor_err_t : std::int32_t {
 ```text
 project/
 ├── include/
-│   └── code_project/
+│   ├── code_project/         # 嵌入式/驱动项目示例
+│   │   ├── core/
+│   │   ├── driver/
+│   │   ├── protocol/
+│   │   └── utils/
+│   └── rl_project/          # 强化学习项目示例
 │       ├── core/
-│       ├── driver/
-│       ├── protocol/
+│       ├── env/
+│       ├── agent/
 │       └── utils/
 ├── src/
-│   ├── core/
-│   ├── driver/
-│   ├── protocol/
-│   └── utils/
+│   ├── code_project/
+│   │   ├── core/
+│   │   ├── driver/
+│   │   ├── example/
+│   │   ├── protocol/
+│   │   └── utils/
+│   └── rl_project/
+│       ├── core/
+│       ├── env/
+│       ├── agent/
+│       ├── example/
+│       └── utils/
 ├── tests/
-│   ├── core/
-│   ├── driver/
-│   └── protocol/
+│   ├── code_project/
+│   │   ├── core/
+│   │   ├── driver/
+│   │   └── protocol/
+│   └── rl_project/
+│       ├── core/
+│       ├── env/
+│       └── agent/
+├── log/
+│   ├── code_project/
+│   │   ├── core/
+│   │   ├── driver/
+│   │   ├── protocol/
+│   │   └── utils/
+│   └── rl_project/
+│       ├── core/
+│       ├── env/
+│       ├── agent/
+│       └── utils/
 ├── cmake/
 └── docs/
 ```
@@ -401,15 +431,52 @@ project/
 - `MUST` 硬件时序、协议字段、兼容性绕过必须注释
 - `MUST NOT` 写无意义注释
 
-### 12.2 Doxygen 要求
+### 12.2 Doxygen 注释规范
 
+**文件级注释**：
 ```cpp
 /**
- * @brief   简要说明
- * @param   param_name 参数说明
- * @return  返回值说明
- * @note    线程安全、单位、范围、前置条件
+ * @file  filename.h
+ * @brief 简要功能说明
+ * @note  补充说明（可选）
  */
+```
+
+**类/结构体注释**：
+```cpp
+/**
+ * @brief  类功能简要说明
+ * @details 详细说明（可选）
+ */
+class my_class_t {
+```
+
+**枚举值注释**：
+```cpp
+enum class sensor_state_t : std::uint8_t {
+    IDLE = 0,           ///< 空闲状态
+    RUNNING,            ///< 运行中
+    ERROR_STATE         ///< 错误状态
+};
+```
+
+**函数注释**：
+```cpp
+/**
+ * @brief       函数功能简要说明
+ * @param[in]   param_name 参数说明
+ * @param[out]  output_param 输出参数说明
+ * @return      返回值说明
+ * @retval      OK 成功
+ * @retval      NULL_PTR 空指针错误
+ * @note        线程安全性、前置条件等
+ */
+core::status_t initialize();
+```
+
+**命名空间注释**：
+```cpp
+namespace code_project::driver {  // NOLINT
 ```
 
 ### 12.3 设计文档
