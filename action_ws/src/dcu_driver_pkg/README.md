@@ -236,8 +236,13 @@ rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 3, c
 rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 3, channel: 2, q: 0.0, kp: 10.0, kd: 1.0}" -1
 rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 5, channel: 2, q: 0.0, kp: 10.0, kd: 1.0}" -1
 
+
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 4, motor_id: 3, channel: 2, q: 0.0, dq: 5.0, tau: 0.0, kp: 0.0, kd: 1.0}" -1
 # 禁能电机
 rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 2, motor_id: 2, channel: 1}" -1
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 2, motor_id: 3, channel: 1}" -1
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 2, motor_id: 3, channel: 2}" -1
+rostopic pub /motor/command dcu_driver_pkg/MotorCommand "{cmd: 2, motor_id: 5, channel: 2}" -1
 ```
 
 ### 电机通道映射

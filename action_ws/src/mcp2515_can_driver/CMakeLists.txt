@@ -43,6 +43,9 @@ add_executable(mcp2515_can_client_cpp
   src/mcp2515_can_client.cpp
 )
 
+add_dependencies(mcp2515_can_server_cpp ${${PROJECT_NAME}_EXPORTED_TARGETS})
+add_dependencies(mcp2515_can_client_cpp ${${PROJECT_NAME}_EXPORTED_TARGETS})
+
 target_link_libraries(mcp2515_can_server_cpp
   ${catkin_LIBRARIES}
   mcp2515_driver
