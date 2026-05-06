@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<!--
+  Balance Control Test Launch File
+  ================================
+  
+  功能:
+    - 启动测试节点
+    - 模拟IMU数据发送
+    - 显示电机角度解算结果
+  
+  使用方法:
+    roslaunch balance_control balance_control_test.launch
+    
+  测试场景:
+    1. 静止状态 (roll=0, pitch=0, yaw=0)
+    2. 轻微前倾 (roll=0, pitch=0.2, yaw=0)
+    3. 轻微左倾 (roll=0.1, pitch=0, yaw=0)
+    4. 组合倾斜 (roll=0.1, pitch=0.15, yaw=0.05)
+  
+  作者: Jetson Nano
+  日期: 2026-05-06
+-->
+<launch>
+    <!-- 测试节点 -->
+    <node name="balance_control_test" pkg="balance_control" type="balance_control_test" 
+          output="screen" launch-prefix="gnome-terminal --">
+        <!-- 可以在这里传递参数 -->
+        <param name="test_mode" type="string" value="auto" />
+        <param name="test_duration" type="double" value="2.0" />
+    </node>
+</launch>

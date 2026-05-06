@@ -1,0 +1,331 @@
+# ===========================================
+# 轮腿机器人硬件参数配置文件
+# Wheeled Legged Robot Hardware Parameters
+# ===========================================
+#
+# 使用说明:
+#   - 所有参数均可通过ROS参数服务器加载
+#   - 支持 launch 文件或 yaml 文件方式加载
+#   - 建议在启动时通过launch文件传递参数
+#
+# 修改记录:
+#   2026-05-06: 初始版本
+#
+# ===========================================
+
+# ===========================================
+# 机器人基本参数
+# Robot Basic Parameters
+# ===========================================
+robot:
+  name: "wheeled_legged_robot"        # 机器人名称
+  type: "biped_wheeled"               # 机器人类型: biped_wheeled
+  mass: 15.0                          # 机器人质量 (kg)
+  gravity: 9.81                       # 重力加速度 (m/s^2)
+
+# ===========================================
+# 腿部几何参数
+# Leg Geometry Parameters
+# ===========================================
+leg:
+  # 腿部长度 (髋关节到膝关节, 膝关节到足端)
+  upper_leg_length: 0.20              # 大腿长度 (m)
+  lower_leg_length: 0.20              # 小腿长度 (m)
+
+  # 髋关节偏移 (相对于身体中心)
+  hip_offset_x: 0.10                  # X方向偏移 (m) - 左右各一个
+  hip_offset_y: 0.0                    # Y方向偏移 (m)
+  hip_offset_z: 0.0                    # Z方向偏移 (m)
+
+  # 腿部工作空间限制
+  leg_length_min: 0.20                # 最小腿长 (m)
+  leg_length_max: 0.40                # 最大腿长 (m)
+  foot_height_min: -0.30              # 足端最小高度 (m)
+  foot_height_max: 0.20                # 足端最大高度 (m)
+
+# ===========================================
+# 轮子参数
+# Wheel Parameters
+# ===========================================
+wheel:
+  radius: 0.10                         # 轮子半径 (m)
+  width: 0.08                          # 轮子宽度 (m)
+  wheel_base: 0.40                    # 两轮之间的间距 (m) - 左右轮中心距
+
+  # 轮子限速 (rad/s)
+  max_wheel_speed: 30.0               # 最大轮子转速
+
+  # 轮子驱动参数
+  wheel_driver_kp: 20.0                # 轮子驱动刚度
+  wheel_driver_kd: 2.0                # 轮子驱动阻尼
+
+# ===========================================
+# IMU 传感器参数
+# IMU Sensor Parameters
+# ===========================================
+imu:
+  # 安装位置 (相对于机器人中心)
+  position_x: 0.0                     # X方向偏移 (m)
+  position_y: 0.0                     # Y方向偏移 (m)
+  position_z: 0.15                    # Z方向偏移 (m) - 通常在身体上方
+
+  # 安装方向 (绕XYZ轴旋转, 弧度)
+  rotation_roll: 0.0                  # 横滚角安装误差 (rad)
+  rotation_pitch: 0.0                # 俯仰角安装误差 (rad)
+  rotation_yaw: 0.0                  # 偏航角安装误差 (rad)
+
+  # IMU 安装坐标系定义
+  # X轴: 指向机器人右侧
+  # Y轴: 指向机器人后方 (前进方向为-Y)
+  # Z轴: 指向上方
+
+  # 平衡姿态 (机器人直立时的IMU输出)
+  # 用于校准和补偿安装误差
+  neutral_pose:
+    roll: 0.0                         # 中立横滚角 (rad)
+    pitch: 0.0                        # 中立俯仰角 (rad)
+    yaw: 0.0                          # 中立偏航角 (rad)
+
+  # 允许的平衡范围
+  balance_range:
+    roll_max: 0.52                    # 最大横滚角 (约30度)
+    pitch_max: 0.52                   # 最大俯仰角 (约30度)
+    yaw_max: 3.14                     # 最大偏航角 (约180度)
+
+# ===========================================
+# 电机配置
+# Motor Configuration
+# ===========================================
+# 每个电机包含: ID, 类型, 通道, 限幅
+motors:
+  # 左腿电机 (4个)
+  - name: "joint_left_leg_1"          # 关节名称
+    motor_id: 3                       # CAN节点ID (1-8)
+    channel: 1                        # CAN通道: 1=CTRL1, 2=CTRL2
+    motor_type: "POWER_FLOW_R86"     # 电机型号: R86/R52/R28
+    joint_type: "hip_roll"           # 关节类型: hip_roll/pitch, knee_pitch, wheel
+    direction: 1                      # 控制方向: 1=正向, -1=反向
+
+  - name: "joint_left_leg_2"
+    motor_id: 3
+    channel: 1
+    motor_type: "POWER_FLOW_R86"
+    joint_type: "hip_pitch"
+    direction: 1
+
+  - name: "joint_left_leg_3"
+    motor_id: 3
+    channel: 2
+    motor_type: "POWER_FLOW_R52"
+    joint_type: "knee_pitch"
+    direction: 1
+
+  - name: "joint_left_leg_4"
+    motor_id: 3
+    channel: 2
+    motor_type: "POWER_FLOW_R52"
+    joint_type: "wheel"
+    direction: 1
+
+  # 右腿电机 (4个)
+  - name: "joint_right_leg_1"
+    motor_id: 2
+    channel: 1
+    motor_type: "POWER_FLOW_R86"
+    joint_type: "hip_roll"
+    direction: -1                      # 右腿方向取反
+
+  - name: "joint_right_leg_2"
+    motor_id: 2
+    channel: 1
+    motor_type: "POWER_FLOW_R86"
+    joint_type: "hip_pitch"
+    direction: -1
+
+  - name: "joint_right_leg_3"
+    motor_id: 5
+    channel: 2
+    motor_type: "POWER_FLOW_R52"
+    joint_type: "knee_pitch"
+    direction: -1
+
+  - name: "joint_right_leg_4"
+    motor_id: 5
+    channel: -2
+    motor_type: "POWER_FLOW_R52"
+    joint_type: "wheel"
+    direction: -1
+
+# ===========================================
+# 电机限幅参数
+# Motor Limit Parameters
+# ===========================================
+motor_limits:
+  # R86电机参数 (用于髋关节)
+  r86:
+    max_torque: 100.0                # 最大力矩 (Nm)
+    max_velocity: 37.7               # 最大速度 (rad/s)
+    position_min: -6.28              # 最小位置 (rad)
+    position_max: 6.28               # 最大位置 (rad)
+    kp_default: 20.0                 # 默认刚度
+    kd_default: 2.0                  # 默认阻尼
+
+  # R52电机参数 (用于膝关节和轮子)
+  r52:
+    max_torque: 50.0                 # 最大力矩 (Nm)
+    max_velocity: 25.1                # 最大速度 (rad/s)
+    position_min: -6.28              # 最小位置 (rad)
+    position_max: 6.28                # 最大位置 (rad)
+    kp_default: 15.0                  # 默认刚度
+    kd_default: 1.5                   # 默认阻尼
+
+# ===========================================
+# 关节标零位置 (限位开关位置)
+# Joint Zero Position (Home Position)
+# ===========================================
+# 标零定义: 各关节限位开关触发时的位置
+joint_home:
+  hip_roll: 0.0                       # 髋横滚零点
+  hip_pitch: 0.0                      # 髋俯仰零点
+  knee_pitch: 0.0                     # 膝俯仰零点
+  wheel: 0.0                          # 轮子零点
+
+  # 标零方向 (从限位开关到机械零点的偏移)
+  hip_roll_offset: 0.0                # 髋横滚偏移
+  hip_pitch_offset: 0.0               # 髋俯仰偏移
+  knee_pitch_offset: 0.0              # 膝俯仰偏移
+  wheel_offset: 0.0                  # 轮子偏移
+
+# ===========================================
+# 关节软限位 (安全限位)
+# Joint Software Limits
+# ===========================================
+joint_soft_limits:
+  hip_roll:
+    min: -1.57                        # 最小角度 (rad, 约-90度)
+    max: 1.57                          # 最大角度 (rad)
+  hip_pitch:
+    min: -1.57
+    max: 1.57
+  knee_pitch:
+    min: -2.35                        # 膝关节允许更大范围
+    max: 0.0                           # 膝关节只能向后弯曲
+  wheel:
+    min: -50.0                        # 轮子软限位 (圈数)
+    max: 50.0
+
+# ===========================================
+# 控制参数
+# Control Parameters
+# ===========================================
+control:
+  # 控制频率
+  control_frequency: 500              # 控制循环频率 (Hz)
+
+  # EtherCAT 通信参数
+  ethercat:
+    interface: "eth0"                # 网卡名称
+    cycle_ns: 2000000                # 通信周期 (ns, 默认2ms)
+    enable_dc: false                 # 是否启用分布式时钟
+
+  # 默认控制模式
+  default_mode: "MIT"               # 控制模式: MIT/POSITION/VELOCITY/TORQUE
+
+  # 安全参数
+  safety:
+    enable_soft_limits: true        # 启用软限位
+    enable_torque_limit: true        # 启用力矩限制
+    emergency_stop_threshold: 150.0   # 紧急停止力矩阈值 (Nm)
+
+# ===========================================
+# 平衡控制参数
+# Balance Control Parameters
+# ===========================================
+balance:
+  # 默认PID参数
+  pid:
+    kp_roll: 10.0                     # 横滚比例增益
+    kd_roll: 1.0                      # 横滚微分增益
+    ki_roll: 0.0                      # 横滚积分增益
+
+    kp_pitch: 10.0                    # 俯仰比例增益
+    kd_pitch: 1.0                     # 俯仰微分增益
+    ki_pitch: 0.0                     # 俯仰积分增益
+
+    kp_yaw: 5.0                       # 偏航比例增益
+    kd_yaw: 0.5                       # 偏航微分增益
+    ki_yaw: 0.0                       # 偏航积分增益
+
+  # 平衡目标姿态
+  target_pose:
+    roll: 0.0                         # 目标横滚角 (rad)
+    pitch: 0.0                        # 目标俯仰角 (rad)
+    yaw: 0.0                          # 目标偏航角 (rad)
+
+  # 算法选择
+  algorithm: "LQR"                   # 默认算法: LQR/VMC/MPC
+
+  # 输出限制
+  max_torque: 50.0                   # 最大输出力矩 (Nm)
+  max_velocity: 10.0                  # 最大输出速度 (rad/s)
+
+# ===========================================
+# 坐标系定义
+# Coordinate System Definition
+# ===========================================
+# 本定义基于机器人本体坐标系 (B frame)
+#
+#   Z (上)
+#   ↑   Y (后/前进方向)
+#   │  ↗
+#   └──→ X (右)
+#
+#   旋转定义:
+#   - Roll: 绕X轴旋转 (侧倾)
+#   - Pitch: 绕Y轴旋转 (俯仰)
+#   - Yaw: 绕Z轴旋转 (偏航)
+#
+# ===========================================
+coordinate:
+  # 机器人本体坐标系
+  body_frame:
+    x_forward: false                 # X轴是否指向前方 (false=指向右侧)
+    y_left: false                     # Y轴是否指向左侧 (false=指向后方)
+
+  # 关节旋转方向定义
+  # 定义正方向: 从机器人视角看
+  joint_direction:
+    hip_roll_positive: "left_out"   # 正值 = 左腿外展
+    hip_pitch_positive: "forward"    # 正值 = 大腿前摆
+    knee_pitch_positive: "backward"   # 正值 = 小腿后摆
+    wheel_positive: "forward"        # 正值 = 轮子向前转动
+
+# ===========================================
+# 通信配置
+# Communication Configuration
+# ===========================================
+communication:
+  # DCU (域控制器) 配置
+  dcu:
+    protocol: "EtherCAT"             # 通信协议
+    model: "AGIBOT_X1"               # DCU型号
+    channels: 3                       # CAN通道数量
+
+  # 电机CAN通信参数
+  canfd:
+    arbitration_baudrate: 1000000    # 仲裁段波特率 (1Mbps)
+    data_baudrate: 5000000           # 数据段波特率 (5Mbps)
+    sample_point: 0.8                 # 采样点 (80%)
+
+# ===========================================
+# 调试参数
+# Debug Parameters
+# ===========================================
+debug:
+  enable_debug_output: false          # 是否启用调试输出
+  enable_state_publish: true          # 是否发布状态话题
+  enable_perf_log: false             # 是否启用性能日志
+
+  state_publish_rate: 50              # 状态发布频率 (Hz)
+
+  log_level: "info"                  # 日志级别: debug/info/warn/error

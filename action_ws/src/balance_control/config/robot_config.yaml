@@ -1,0 +1,57 @@
+motors:
+  - name: "joint_left_leg_1"
+    ethercat_id: 1
+    can_node_id: 3
+    can_channel: "CTRL1"
+    actuator_type: "POWER_FLOW_R86"
+    torque_limit: 100.0
+    velocity_limit: 37.7
+  - name: "joint_left_leg_2"
+    ethercat_id: 1
+    can_node_id: 3
+    can_channel: "CTRL1"
+    actuator_type: "POWER_FLOW_R86"
+    torque_limit: 100.0
+    velocity_limit: 37.7
+  - name: "joint_left_leg_3"
+    ethercat_id: 1
+    can_node_id: 3
+    can_channel: "CTRL2"
+    actuator_type: "POWER_FLOW_R52"
+    torque_limit: 50.0
+    velocity_limit: 25.1
+  - name: "joint_left_leg_4"
+    ethercat_id: 1
+    can_node_id: 3
+    can_channel: "CTRL2"
+    actuator_type: "POWER_FLOW_R52"
+    torque_limit: 50.0
+    velocity_limit: 25.1
+  - name: "joint_right_leg_1"
+    ethercat_id: 1
+    can_node_id: 2
+    can_channel: "CTRL1"
+    actuator_type: "POWER_FLOW_R86"
+    torque_limit: 100.0
+    velocity_limit: 37.7
+  - name: "joint_right_leg_2"
+    ethercat_id: 1
+    can_node_id: 2
+    can_channel: "CTRL1"
+    actuator_type: "POWER_FLOW_R86"
+    torque_limit: 100.0
+    velocity_limit: 37.7
+  - name: "joint_right_leg_3"
+    ethercat_id: 1
+    can_node_id: 5
+    can_channel: "CTRL2"
+    actuator_type: "POWER_FLOW_R52"
+    torque_limit: 50.0
+    velocity_limit: 25.1
+  - name: "joint_right_leg_4"
+    ethercat_id: 1
+    can_node_id: 5
+    can_channel: "CTRL2"
+    actuator_type: "POWER_FLOW_R52"
+    torque_limit: 50.0
+    velocity_limit: 25.1

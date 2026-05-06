@@ -1,0 +1,26 @@
+# Balance Control Action
+# Goal: 选择算法、设置目标姿态、启用/停用控制
+# Feedback: 当前姿态、控制输出、状态
+# Result: 执行结果
+
+# Goal message
+uint8 algorithm_id  # 0=LQR, 1=VMC, 2=MPC
+float64 target_roll
+float64 target_pitch
+float64 target_yaw
+bool enable_control
+---
+# Result message
+bool success
+string message
+---
+# Feedback message
+std_msgs/Header header
+float64 current_roll
+float64 current_pitch
+float64 current_yaw
+float64[] joint_positions
+float64[] torques
+string algorithm_name
+bool control_enabled
+string status_message

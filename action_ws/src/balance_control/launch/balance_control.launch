@@ -1,0 +1,76 @@
+<?xml version="1.0"?>
+<!--
+  Balance Control Launch File
+  ===========================
+  
+  功能:
+    - 启动IMU驱动 (yb_imu_driver)
+    - 启动电机驱动 (dcu_driver_pkg)
+    - 启动平衡控制算法服务器 (balance_control_server)
+    - 加载硬件参数配置文件
+  
+  使用方法:
+    roslaunch balance_control balance_control.launch
+
+  参数说明:
+    hardware_params_file: 硬件参数配置文件路径
+    algorithm: 算法选择 0=LQR, 1=VMC, 2=MPC (默认0)
+    target_*: 目标姿态角 rad
+    ethercat_if: EtherCAT网卡 (默认eth0)
+    enable_dc: 是否启用分布式时钟 (默认false)
+    control_frequency: 控制频率 Hz (默认500)
+  
+  作者: Jetson Nano
+  日期: 2026-05-06
+-->
+<launch>
+    <!-- ========== 参数配置 ========== -->
+    <arg name="hardware_params_file" default="$(find balance_control)/config/robot_hardware_params.yaml" />
+    <arg name="algorithm" default="0" />
+    <arg name="target_roll" default="0.0" />
+    <arg name="target_pitch" default="0.0" />
+    <arg name="target_yaw" default="0.0" />
+    <arg name="ethercat_if" default="eth0" />
+    <arg name="enable_dc" default="false" />
+    <arg name="control_frequency" default="500" />
+
+    <!-- ========== 加载硬件参数配置 ========== -->
+    <rosparam command="load" file="$(arg hardware_params_file)" />
+
+    <!-- ========== DCU配置文件 ========== -->
+    <rosparam command="load" file="$(find dcu_driver_pkg)/cfg/dcu_cfg.yaml" />
+
+    <!-- ========== IMU服务器 ========== -->
+    <node name="imu_serial_server" pkg="yb_imu_driver" type="imu_serial_server.py" output="screen">
+        <param name="serial_port" value="/dev/ttyUSB0" />
+        <param name="report_rate" value="50" />
+        <param name="publish_topic" value="true" />
+        <param name="realtime_publish_rate" value="50.0" />
+    </node>
+
+    <!-- ========== DCU电机驱动服务器 ========== -->
+    <node name="dcu_driver_server" pkg="dcu_driver_pkg" type="dcu_driver_server" output="screen" required="true">
+        <param name="ethercat_if" type="string" value="$(arg ethercat_if)" />
+        <param name="enable_dc" type="bool" value="$(arg enable_dc)" />
+        <param name="cycle_ns" type="int" value="2000000" />
+        <param name="run_auto_test" type="bool" value="false" />
+    </node>
+
+    <!-- ========== 平衡控制算法服务器 ========== -->
+    <node name="balance_control_server" pkg="balance_control" type="balance_control_server" output="screen" required="true">
+        <param name="algorithm" type="string" value="$(arg algorithm)" />
+        <param name="target_roll" type="double" value="$(arg target_roll)" />
+        <param name="target_pitch" type="double" value="$(arg target_pitch)" />
+        <param name="target_yaw" type="double" value="$(arg target_yaw)" />
+        <param name="control_frequency" type="double" value="$(arg control_frequency)" />
+    </node>
+
+    <!-- ========== 平衡控制客户端 ========== -->
+    <node name="balance_algorithm_client" pkg="balance_control" type="balance_algorithm_client" output="screen">
+        <param name="algorithm" type="int" value="$(arg algorithm)" />
+        <param name="target_roll" type="double" value="$(arg target_roll)" />
+        <param name="target_pitch" type="double" value="$(arg target_pitch)" />
+        <param name="target_yaw" type="double" value="$(arg target_yaw)" />
+    </node>
+
+</launch>

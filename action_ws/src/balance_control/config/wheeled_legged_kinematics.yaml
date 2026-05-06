@@ -1,0 +1,200 @@
+# ===========================================
+# Wheeled Legged Robot Kinematics Parameters
+# ===========================================
+#
+# This file contains all kinematic and geometric parameters
+# needed for forward/inverse kinematics calculations.
+#
+# Author: Jetson Nano
+# Date: 2026-05-06
+#
+# ===========================================
+
+# ===========================================
+# Leg Geometry Parameters
+# ===========================================
+leg:
+
+  # Upper leg length (hip joint to knee joint) [m]
+  upper_leg_length: 0.20
+
+  # Lower leg length (knee joint to ankle/foot) [m]
+  lower_leg_length: 0.20
+
+  # Hip joint offset from body center [m]
+  hip_offset:
+    x: 0.10                    # Lateral offset (positive = right side)
+    y: 0.0                     # Forward/backward offset
+    z: 0.0                     # Vertical offset
+
+  # Ankle offset (vertical distance from knee to ankle joint) [m]
+  ankle_offset: 0.05
+
+  # Leg workspace limits [m]
+  workspace:
+    min_length: 0.15           # Minimum leg extension
+    max_length: 0.40           # Maximum leg extension
+    min_height: -0.30          # Minimum foot height (below hip)
+    max_height: 0.20           # Maximum foot height (above hip)
+
+# ===========================================
+# Wheel Parameters
+# ===========================================
+wheel:
+
+  # Wheel physical dimensions [m]
+  radius: 0.10
+  width: 0.08
+
+  # Wheel position relative to body center [m]
+  position:
+    x: 0.10                    # Lateral offset (same as hip_offset_x)
+    y: 0.0                     # Forward/backward offset
+    z: 0.0                     # Vertical offset
+
+  # Wheel base (distance between left and right wheels) [m]
+  wheel_base: 0.40
+
+  # Wheel limits
+  max_speed: 30.0             # Maximum wheel angular velocity [rad/s]
+  max_torque: 50.0            # Maximum wheel torque [Nm]
+
+# ===========================================
+# Joint Limits
+# ===========================================
+joint_limits:
+
+  # Hip Roll (abduction/adduction) - rotates about Y axis
+  hip_roll:
+    min: -1.57                 # -90 degrees [rad]
+    max: 1.57                  # +90 degrees [rad]
+    max_velocity: 10.0         # [rad/s]
+
+  # Hip Pitch (flexion/extension) - rotates about X axis
+  hip_pitch:
+    min: -1.57                 # -90 degrees [rad]
+    max: 1.57                  # +90 degrees [rad]
+    max_velocity: 10.0         # [rad/s]
+
+  # Knee Pitch (flexion/extension) - rotates about X axis
+  knee_pitch:
+    min: -2.35                 # -135 degrees [rad]
+    max: 0.0                   # 0 degrees (can't bend forward) [rad]
+    max_velocity: 10.0         # [rad/s]
+
+  # Wheel (rotation about X axis)
+  wheel:
+    min: -50.0                 # ~8 revolutions [rad]
+    max: 50.0                  # [rad]
+    max_velocity: 30.0         # [rad/s]
+
+# ===========================================
+# Home/Zero Positions
+# ===========================================
+# These are the joint angles when robot is in home/standing position
+# (legs fully extended, wheels vertical)
+home_position:
+  hip_roll: 0.0
+  hip_pitch: 0.0
+  knee_pitch: 0.0
+  wheel: 0.0
+
+# Home position offsets (from limit switches to mechanical zero)
+home_offsets:
+  hip_roll: 0.0
+  hip_pitch: 0.0
+  knee_pitch: 0.0
+  wheel: 0.0
+
+# ===========================================
+# Default/Standing Pose
+# ===========================================
+# Used when robot needs to stand at a specific height
+standing_pose:
+  # Body height above ground when standing [m]
+  body_height: 0.35
+
+  # Body pitch angle when standing [rad]
+  body_pitch: 0.0
+
+  # Hip pitch angle for standing [rad]
+  hip_pitch_standing: 0.0
+
+  # Knee pitch angle for standing [rad]
+  knee_pitch_standing: 0.0
+
+# ===========================================
+# Walking Gait Parameters
+# ===========================================
+gait:
+  # Step parameters
+  step:
+    max_height: 0.15          # Maximum foot lift during swing [m]
+    min_height: 0.02           # Minimum foot clearance [m]
+    length: 0.20               # Step length [m]
+    width: 0.10                # Lateral step width [m]
+
+  # Timing [s]
+  swing_duration: 0.3          # Time for swing phase
+  stance_duration: 0.5        # Time for stance phase
+
+  # Velocity limits [m/s]
+  max_forward_speed: 0.5
+  max_backward_speed: 0.3
+  max_lateral_speed: 0.2
+  max_turning_speed: 2.0      # [rad/s]
+
+# ===========================================
+# Coordinate System
+# ===========================================
+# Body frame definition (X-forward convention)
+#   Z (up)
+#   ^   Y (backward)
+#   |  /
+#   | /
+#   +----> X (right)
+#
+coordinate_frame:
+  # Joint rotation directions (positive rotation)
+  joint_directions:
+    # Hip roll: positive rotates leg outward (from body perspective)
+    hip_roll_positive: "outward"
+
+    # Hip pitch: positive rotates leg forward
+    hip_pitch_positive: "forward"
+
+    # Knee pitch: positive rotates lower leg backward
+    knee_pitch_positive: "backward"
+
+    # Wheel: positive rotates wheel forward (from robot perspective)
+    wheel_positive: "forward"
+
+  # Foot contact frame
+  foot_contact:
+    # Z-axis points downward from foot center
+    z_direction: "down"
+
+# ===========================================
+# Kinematics Solver Parameters
+# ===========================================
+solver:
+  # IK solver settings
+  max_iterations: 100         # Maximum iterations for IK solver
+  tolerance: 0.001            # Position tolerance [m]
+
+  # Damping factor for pseudo-inverse (damped least squares)
+  damping: 0.01
+
+  # Enable singularity handling
+  enable_singularity_handling: true
+
+  # Joint limit avoidance weight
+  joint_limit_weight: 0.1
+
+# ===========================================
+# Visualization/Debug
+# ===========================================
+debug:
+  publish_leg_states: true    # Publish leg state topics
+  publish_tf: true             # Publish TF transforms
+  visualize_workspace: false   # Visualize leg workspace
