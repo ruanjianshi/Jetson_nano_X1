@@ -10,7 +10,8 @@
  *   Server mode (default): rosrun balance_control balance_control_server
  *   Client mode:          rosrun balance_control balance_control_server _client_mode:=true
  *
- * Author: Jetson Nano
+ * Author: Qi Xiao
+Email: 2408128687@qq.com
  * Date: 2026-05-06
  */
 

@@ -39,7 +39,8 @@ Commands:
   balance                   进入平衡模式
   status                    查询状态
 
-作者: Jetson Nano
+Author: Qi Xiao
+Email: 2408128687@qq.com
 日期: 2026-05-06
 """
 

@@ -18,7 +18,8 @@
  *   3. 设置预测模型矩阵A,B (setPredictionModel)
  *   4. 调用 computeControl 计算控制输出
  * 
- * 作者: Jetson Nano
+ * Author: Qi Xiao
+Email: 2408128687@qq.com
  * 日期: 2026-05-06
  */
 

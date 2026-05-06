@@ -20,7 +20,8 @@
     enable_dc: 是否启用分布式时钟 (默认false)
     control_frequency: 控制频率 Hz (默认500)
   
-  作者: Jetson Nano
+  Author: Qi Xiao
+Email: 2408128687@qq.com
   日期: 2026-05-06
 -->
 <launch>

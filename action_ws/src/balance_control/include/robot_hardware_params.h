@@ -17,7 +17,8 @@
  *   auto limits = params.getMotorLimits("R86");
  *   params.applySoftLimits("hip_roll", angle);
  *
- * 作者: Jetson Nano
+ * Author: Qi Xiao
+Email: 2408128687@qq.com
  * 日期: 2026-05-06
  */
 

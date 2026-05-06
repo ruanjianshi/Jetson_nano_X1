@@ -17,7 +17,8 @@
     3. 轻微左倾 (roll=0.1, pitch=0, yaw=0)
     4. 组合倾斜 (roll=0.1, pitch=0.15, yaw=0.05)
   
-  作者: Jetson Nano
+  Author: Qi Xiao
+Email: 2408128687@qq.com
   日期: 2026-05-06
 -->
 <launch>

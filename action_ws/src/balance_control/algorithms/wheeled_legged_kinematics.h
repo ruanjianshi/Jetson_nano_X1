@@ -17,7 +17,8 @@
  *   膝俯仰 (Knee Pitch) - 绕X轴旋转，控制小腿后摆/前摆
  *   轮子 (Wheel)       - 绕X轴旋转，驱动轮子转动
  *
- * 作者: Jetson Nano
+ * Author: Qi Xiao
+Email: 2408128687@qq.com
  * 日期: 2026-05-06
  */
 

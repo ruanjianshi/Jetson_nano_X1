@@ -26,7 +26,8 @@ Balance Control Command Client
   rosrun balance_control robot_command_client.py _command:=1 _speed:=0.5
   rosrun balance_control robot_command_client.py _command:=3 _yaw_rate:=1.0
 
-作者: Jetson Nano
+Author: Qi Xiao
+Email: 2408128687@qq.com
 日期: 2026-05-06
 """
 

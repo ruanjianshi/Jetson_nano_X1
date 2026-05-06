@@ -28,7 +28,8 @@ Keyboard Teleop for Wheeled Legged Robot
 使用示例:
   rosrun balance_control robot_keyboard_teleop.py
 
-作者: Jetson Nano
+Author: Qi Xiao
+Email: 2408128687@qq.com
 日期: 2026-05-06
 """
 

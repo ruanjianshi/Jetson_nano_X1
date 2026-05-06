@@ -8,7 +8,8 @@
  *   2. Critic Network (评价网络) - 近似最优价值函数
  *   3. Model Network (模型网络) - 近似系统动力学
  *
- * 作者: Jetson Nano
+ * Author: Qi Xiao
+Email: 2408128687@qq.com
  * 日期: 2026-05-06
  */
 

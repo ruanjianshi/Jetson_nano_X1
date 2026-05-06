@@ -34,6 +34,7 @@ Jetson_Nano/
 │       ├── yb_imu_driver/        # 九轴 IMU 驱动
 │       ├── my_action_pkg/        # GPIO/I2C/Serial/SPI/PWM 示例
 │       ├── opencv_cuda_pkg/     # OpenCV CUDA 处理
+│       ├── balance_control/     # 轮腿机器人平衡控制算法包
 │       └── maita_can_comm/       # CAN 通信
 ├── ROS_Project/                  # 主 ROS 项目
 ├── ThreadPoolProject/           # C++ 多线程测试 (C++20)
@@ -298,6 +299,68 @@ rosrun yb_imu_driver imu_serial_client.py algo9
 
 ---
 
+### balance_control - 轮腿机器人平衡控制
+
+**功能**: 轮腿机器人(Wheeled Legged Robot)平衡控制算法包，支持多种平衡控制算法和运动学解算。
+
+**支持的算法**:
+| 算法 | 说明 | 特点 |
+|------|------|------|
+| LQR | 线性二次调节器 | 计算简单，响应快 |
+| VMC | 虚拟模型控制 | 直观易懂，稳定裕度大 |
+| MPC | 模型预测控制 | 能处理约束，多步预测 |
+| ADP | 自适应动态规划 | 自适应强，可在线学习 |
+
+**核心功能**:
+- 运动学正逆解 (Forward/Inverse Kinematics)
+- 雅可比矩阵计算
+- 关节限位与软限制
+- 电机力矩分配
+- ROS Action 通信接口
+
+**硬件参数配置**:
+- 腿部长度 (大腿L1=0.20m, 小腿L2=0.20m)
+- 髋关节偏移
+- 轮子参数 (半径0.10m, 轮距0.40m)
+- 电机配置 (8个电机: R86/R52)
+- PID增益参数
+
+**启动**:
+```bash
+# 启动平衡控制服务器
+rosrun balance_control balance_control_server
+
+# 启用控制 (LQR算法)
+rostopic pub /balance_control/goal balance_control/BalanceControlActionGoal \
+    "{goal: {algorithm_id: 0, enable_control: true, target_roll: 0, target_pitch: 0, target_yaw: 0}}" --once
+
+# 发送IMU数据测试
+rostopic pub /imu_serial/data sensor_msgs/Imu "{orientation: {x: 0.087, y: 0, z: 0, w: 0.996}}" -r 50
+```
+
+**算法切换**:
+```bash
+# LQR (algorithm_id=0)
+rostopic pub /balance_control/goal balance_control/BalanceControlActionGoal \
+    "{goal: {algorithm_id: 0, enable_control: true}}" --once
+
+# VMC (algorithm_id=1)
+rostopic pub /balance_control/goal balance_control/BalanceControlActionGoal \
+    "{goal: {algorithm_id: 1, enable_control: true}}" --once
+
+# MPC (algorithm_id=2)
+rostopic pub /balance_control/goal balance_control/BalanceControlActionGoal \
+    "{goal: {algorithm_id: 2, enable_control: true}}" --once
+
+# ADP (algorithm_id=3) - 在线学习
+rostopic pub /balance_control/goal balance_control/BalanceControlActionGoal \
+    "{goal: {algorithm_id: 3, enable_control: true}}" --once
+```
+
+**详细文档**: `action_ws/src/balance_control/README.md`
+
+---
+
 ### my_action_pkg - 硬件通信示例
 
 **功能**: GPIO、I2C、Serial、SPI、PWM 的 ROS Action 示例
@@ -499,5 +562,8 @@ cd ThreadPoolProject && make clean
 
 ---
 
-**最后更新**: 2026-04-23
-**文档版本**: v2.0
+**作者**: Qi Xiao  
+**邮箱**: 2408128687@qq.com
+
+**最后更新**: 2026-05-06
+**文档版本**: v2.1

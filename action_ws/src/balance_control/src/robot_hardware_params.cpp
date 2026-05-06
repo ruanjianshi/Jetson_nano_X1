@@ -12,7 +12,8 @@
  *   params.loadFromYaml("/path/to/config.yaml");
  *   params.loadFromParamServer(nh);
  *
- * 作者: Jetson Nano
+ * Author: Qi Xiao
+Email: 2408128687@qq.com
  * 日期: 2026-05-06
  */
 

@@ -17,7 +17,8 @@
  *   3. 设置足端位置 (setFootPositions)
  *   4. 调用 computeControl 计算控制输出
  * 
- * 作者: Jetson Nano
+ * Author: Qi Xiao
+Email: 2408128687@qq.com
  * 日期: 2026-05-06
  */
 
