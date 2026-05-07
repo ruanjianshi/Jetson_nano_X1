@@ -40,8 +40,9 @@ sim2real_pkg/
 │   └── default_config.yaml
 │
 └── models/                      # 模型文件目录
-    ├── jump_model.onnx           # 轮腿 RL 模型
-    └── yolo11n.onnx             # YOLO 模型
+    ├── yolo11n.pt                # YOLOv11 Nano 原始模型 (5.4 MB)
+    ├── yolo11n.onnx             # YOLOv11 Nano ONNX (10.2 MB)
+    └── jump_model.onnx           # 轮腿 RL 模型
 ```
 
 ## 快速开始
@@ -80,6 +81,8 @@ rosrun sim2real_pkg pt2onnx_converter.py \
     --type yolo \
     --onnx models/yolo11n.onnx
 ```
+
+> 转换耗时约 90 秒，输出约 10 MB 的 ONNX 文件。首次运行会安装 onnx/onnxslim 依赖。
 
 **ROS 节点运行:**
 ```bash
@@ -166,23 +169,91 @@ python3 action_ws/src/sim2real_pkg/scripts/rl_inference/rl_model_sim_test.py [op
   --interval MS           连续测试间隔 ms (default: 20.0)
 ```
 
-## 推理方案对比
+---
 
-| 方案 | 依赖 | 性能 | 适用场景 |
-|------|------|------|----------|
-| **PyTorch GPU** | PyTorch + CUDA | YOLOv8s ~200-400ms | ✅ 推荐生产环境 |
-| **ONNX Runtime CPU** | onnxruntime 1.19.2 | YOLOv8s ~1-2s | 测试/调试阶段 |
-| **TensorRT** | TensorRT SDK + pycuda | YOLOv8s <50ms | 极致优化(待完善) |
+## 性能基准测试
 
-## 性能测试结果
+### yolo11n.onnx 实测数据 (2026-05-07, Jetson Nano B01)
 
-**RL 模型 (jump_model.onnx) - ONNX Runtime CPU:**
+**测试环境:**
+- 模型: YOLOv11 Nano (100层, 2,616,248 参数, 6.5 GFLOPs)
+- ONNX: opset 17, onnxslim 简化 (10.2 MB)
+- 输入: [1, 3, 640, 640] float32
+- 输出: [1, 84, 8400]
+
+| 指标 | PyTorch GPU (640) | PyTorch GPU (416) | ONNX CPU (640) |
+|------|-------------------|--------------------|----------------|
+| **推理延迟** | ~300-450ms | ~150-250ms | **772ms** |
+| **FPS** | 2.2-3.3 | 4.0-6.5 | **1.3** |
+| **P95延迟** | ~500ms | ~300ms | 861ms |
+| **冷启动** | ⚠️ ~10分钟 | ⚠️ ~10分钟 | ✅ 即时 |
+| **GPU加速** | ✅ | ✅ | ❌ CPU only |
+
+> **冷启动说明**: PyTorch GPU 首次推理需要对 CUDA kernel 进行 JIT 编译 (Jetson Nano 耗时约 10 分钟)。
+> 编译后 kernel 会被缓存，后续推理正常。建议使用 ROS 节点常驻运行，避免反复冷启动。
+
+### 推理方案对比
+
+| 方案 | 延迟 | FPS | GPU | 冷启动 | 推荐度 |
+|------|------|-----|-----|--------|--------|
+| **PyTorch GPU (416)** | 150-250ms | 4.0-6.5 | ✅ | ⚠️ 首次 10min | ⭐⭐⭐⭐ |
+| **PyTorch GPU (640)** | 300-450ms | 2.2-3.3 | ✅ | ⚠️ 首次 10min | ⭐⭐⭐ |
+| **ONNX Runtime CPU** | 772ms | 1.3 | ❌ | ✅ 即时 | ⭐ (备份) |
+| **TensorRT** | <50ms | >20 | ✅ | - | ⚠️ 待 Python bindings |
+
+### RL 模型 (jump_model.onnx) - ONNX Runtime CPU
+
 | 指标 | 值 |
 |------|------|
-| 推理延迟 (Mean) | 0.39ms |
-| 延迟 P95 | 0.56ms |
-| 吞吐量 | 2554 FPS |
+| 推理延迟 (Mean) | 0.58ms |
+| 延迟 P95 | 0.92ms |
+| 吞吐量 | 1720 FPS |
 | 50Hz 连续推理 | ✅ 稳定达成 |
+
+---
+
+## 可行性总结
+
+### PT → ONNX 转换: ✅ 完全可行
+
+- 使用 Ultralytics `model.export(format='onnx')` 一键完成
+- 输出 10.2 MB，opset 17
+- 支持 simplify/FP16/动态imgsz 等选项
+
+### ONNX Runtime CPU 推理: ❌ 不推荐生产
+
+- **延迟 772ms (1.3 FPS)** - 远低于实时要求
+- aarch64 平台无 `onnxruntime-gpu` 预编译包
+- 仅适合离线批处理、调试、模型验证
+
+### PyTorch GPU 推理: ⭐ 推荐方案
+
+- **热身后 150-450ms**，是 ONNX CPU 的 2-5 倍
+- 冷启动需约 10 分钟 (CUDA JIT 编译)，热身后即稳定
+- **建议**:
+  1. 使用 `yolov11_pkg` ROS 节点常驻运行
+  2. 输入尺寸降至 **imgsz=416** 平衡速度和精度
+  3. 预热后再进行推理
+
+### 与 yolov11_pkg 协同
+
+| 包 | 功能 | 推理后端 | 推荐 |
+|----|------|----------|------|
+| `yolov11_pkg` | YOLO 推理 | PyTorch GPU | ✅ 主推理 |
+| `sim2real_pkg` | 模型转换 + ONNX 推理 | ONNX Runtime CPU | ⚠️ 备份/转换 |
+
+```bash
+# 1. 转换 YOLO 模型为 ONNX (sim2real_pkg)
+rosrun sim2real_pkg pt2onnx_converter.py --mode pt2onnx --pt models/yolo11n.pt --type yolo
+
+# 2. 推荐: yolov11_pkg 使用 PyTorch GPU 推理
+rosrun yolov11_pkg yolov11_inference_server.py
+
+# 3. 备选: sim2real_pkg ONNX 推理 (CPU，772ms)
+roslaunch sim2real_pkg sim2real.launch model_path:=models/yolo11n.onnx
+```
+
+---
 
 ## 系统要求
 
@@ -200,32 +271,18 @@ python3 action_ws/src/sim2real_pkg/scripts/rl_inference/rl_model_sim_test.py [op
 pip3 list | grep -E "onnx|onnxruntime|pycuda|ultralytics|torch"
 
 # 预期输出:
-# onnx                         1.10.0
-# onnxruntime                   1.19.2
-# pycuda                        2026.1
-# ultralytics                   8.4.33
-# torch                         1.13.0a0+git7c98e70
-```
-
-## 与 yolov11_pkg 协同
-
-| 包 | 功能 | 推理后端 |
-|----|------|----------|
-| `yolov11_pkg` | YOLO 推理 | PyTorch GPU (推荐) |
-| `sim2real_pkg` | 模型转换 + ONNX 推理 | ONNX Runtime CPU |
-
-```bash
-# 1. 转换 YOLO 模型为 ONNX
-rosrun sim2real_pkg pt2onnx_converter.py --mode pt2onnx --pt your_model.pt --type yolo
-
-# 2. yolov11_pkg 使用 PyTorch GPU 推理 (推荐)
-rosrun yolov11_pkg yolov11_inference_server.py
-
-# 或使用 sim2real_pkg ONNX 推理 (CPU，较慢)
-roslaunch sim2real_pkg sim2real.launch model_path:=models/your_model.onnx
+# onnx                         1.17.0
+# onnxruntime                  1.19.2
+# onnxslim                     0.1.92
+# pycuda                       2026.1
+# ultralytics                  8.4.33
+# torch                        1.13.0a0+git7c98e70
 ```
 
 ## 常见问题
+
+**Q: PyTorch GPU 首次推理为什么这么慢?**
+A: CUDA kernel 需要在首次调用时进行 JIT 编译，Jetson Nano (Maxwell GPU) 编译约需 10 分钟。编译后缓存会加速后续调用。解决方案: 使用 ROS 节点常驻进程，预热后保持运行。
 
 **Q: TensorRT Python 无法导入?**
 A: TensorRT Python bindings 仅支持 Python 3.6，Jetson Nano 默认 Python 3.8。C 库可用，可使用 trtexec 工具构建引擎。
@@ -234,7 +291,10 @@ A: TensorRT Python bindings 仅支持 Python 3.6，Jetson Nano 默认 Python 3.8
 A: aarch64 架构无官方预编译包，使用 CPU 版本或 PyTorch GPU 推理。
 
 **Q: 内存不足 OOM?**
-A: 使用 yolo11n 模型，降低输入分辨率，避免批处理。
+A: 使用 yolo11n 模型，降低 imgsz 至 416，避免批处理，关闭其他应用释放内存。
+
+**Q: ONNX CPU 推理如何加速?**
+A: 无法加速。aarch64 的 ONNX Runtime CPU 推理受限于 ARM Cortex-A57 性能。YOLO 6.5GFLOPs 的浮点计算对 CPU 来说太重型。建议换用 PyTorch GPU。
 
 ## License
 

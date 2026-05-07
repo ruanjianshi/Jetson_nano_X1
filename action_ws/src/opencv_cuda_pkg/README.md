@@ -17,7 +17,9 @@
 opencv_cuda_pkg/
 ├── action/                      # Action 定义
 │   ├── ImageProcessing.action   # 图像处理 Action
-│   └── OpenCVDetection.action   # 目标检测 Action
+│   ├── OpenCVDetection.action   # 目标检测 Action
+│   ├── ColorTracking.action     # 颜色追踪 Action
+│   └── ShapeDetection.action    # 形状检测 Action
 ├── msg/                         # 消息定义
 │   └── DetectionResult.msg      # 检测结果消息
 ├── models/                      # 模型文件
@@ -28,7 +30,11 @@ opencv_cuda_pkg/
 │   ├── image_processing_server.py    # 图像处理服务器
 │   ├── image_processing_client.py    # 图像处理客户端
 │   ├── opencv_detection_server.py    # 目标检测服务器
-│   └── opencv_detection_client.py    # 目标检测客户端
+│   ├── opencv_detection_client.py    # 目标检测客户端
+│   ├── color_tracking_server.py      # 颜色追踪服务器
+│   ├── color_tracking_client.py      # 颜色追踪客户端
+│   ├── shape_detection_server.py     # 形状检测服务器
+│   └── shape_detection_client.py     # 形状检测客户端
 ├── launch/                      # 启动文件
 │   ├── image_processing_server.launch
 │   └── opencv_detection_server.launch
@@ -335,6 +341,109 @@ export PYTHONPATH="/opt/ros/noetic/lib/python3/dist-packages:$PYTHONPATH"
 | gaussian_blur | 15ms | 3ms | 5x |
 | canny | 20ms | 5ms | 4x |
 | color_convert | 3ms | 1ms | 3x |
+
+---
+
+## 颜色追踪
+
+基于 HSV 颜色空间的实时颜色物体追踪, 支持距离估算。
+
+### 启动服务器
+
+```bash
+rosrun opencv_cuda_pkg color_tracking_server.py
+```
+
+### 使用客户端
+
+```bash
+rosrun opencv_cuda_pkg color_tracking_client.py --color red
+rosrun opencv_cuda_pkg color_tracking_client.py --color green
+rosrun opencv_cuda_pkg color_tracking_client.py --list
+```
+
+### 距离标定
+
+```bash
+# 将目标放在已知距离 (如 50cm), 记下日志中的 A: 值
+# 然后用参考参数运行
+rosrun opencv_cuda_pkg color_tracking_client.py --color red \
+    --ref-distance 50 --ref-area 15000
+```
+
+### 支持的颜色
+
+`red / green / blue / yellow / orange / purple / pink / cyan / white / black`
+
+### 输出话题
+
+| 话题 | 描述 |
+|------|------|
+| `/color_tracking/result_image` | 带检测框和轨迹的图像 |
+
+---
+
+## 形状检测 (Shape Detection) ⚠️ 实验性
+
+基于轮廓分析的实时几何形状检测。通过多边形近似 + 圆形度/矩形度/坚固度多特征融合
+判断形状类型, 支持距离估算。
+
+**⚠️ 已知限制**: 当前版本基于传统计算机视觉方法, 对光照变化、背景纹理、边缘质量敏感,
+检测效果不稳定。详见 [已知限制与优化方向](#已知限制与优化方向-shape-detection)。
+
+### 检测原理
+
+1. **adaptiveThreshold** + **Otsu** 双通道二值化
+2. 轮廓提取 + 面积过滤
+3. `approxPolyDP` 多边形近似 + `circularity`/`rectangularity`/`solidity` 特征判断
+4. 面积反比估算距离
+
+### 启动服务器
+
+```bash
+rosrun opencv_cuda_pkg shape_detection_server.py
+```
+
+### 使用客户端
+
+```bash
+rosrun opencv_cuda_pkg shape_detection_client.py --shape all
+rosrun opencv_cuda_pkg shape_detection_client.py --shape circle --min-area 5000
+rosrun opencv_cuda_pkg shape_detection_client.py --shape rectangle --ref-distance 50 --ref-area 10000
+```
+
+### 支持的形状
+
+`triangle / square / rectangle / pentagon / hexagon / circle / all`
+
+### 输出话题
+
+| 话题 | 描述 |
+|------|------|
+| `/shape_detection/result_image` | 带检测框和标注的图像 |
+| `/shape_detection/debug` | 二值化调试面板 (adaptive \| otsu) |
+
+### 反馈输出
+
+```
+SQUARE X:320 Y:240 D:45.2cm A:56200 V:4 C:0.78 FPS:29.8
+ 形状名  X坐标 Y坐标 距离   面积  顶点数 圆形度  帧率
+```
+
+### 已知限制与优化方向 (Shape Detection)
+
+**当前问题**:
+- 对光照变化敏感, 强光/阴影/反光导致检测不稳定
+- 需要前景形状与背景有明显对比度 (如白纸上画黑色图形)
+- 复杂纹理背景会产生大量误检
+- `approxPolyDP` 顶点数在边缘不清晰时跳变, 导致形状误判
+
+**后续优化方向**:
+- [ ] 使用轻量 CNN 模型做形状分类, 替代手工特征工程
+- [ ] 增加背景建模 (Background Subtractor) 分离前景
+- [ ] CLAHE 直方图均衡化增强边缘
+- [ ] 结合颜色追踪做 ROI 区域约束
+- [ ] 卡尔曼滤波平滑检测结果, 减少跳变
 
 ---
 

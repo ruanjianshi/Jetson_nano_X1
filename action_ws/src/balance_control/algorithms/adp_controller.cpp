@@ -1,6 +1,6 @@
 /*
- * ADP Controller Implementation
- * =============================
+ * ADP Controller Implementation (URDF匹配版)
+ * ==========================================
  */
 
 #include "adp_controller.h"
@@ -39,23 +39,18 @@ void ADPController::reset() {
 
 std::vector<double> ADPController::eigenToVector(const Eigen::VectorXd& v) {
     std::vector<double> result(v.size());
-    for (int i = 0; i < v.size(); ++i) {
-        result[i] = v(i);
-    }
+    for (int i = 0; i < v.size(); ++i) result[i] = v(i);
     return result;
 }
 
 Eigen::VectorXd ADPController::vectorToEigen(const std::vector<double>& v) {
     Eigen::VectorXd result(v.size());
-    for (size_t i = 0; i < v.size(); ++i) {
-        result(i) = v[i];
-    }
+    for (size_t i = 0; i < v.size(); ++i) result(i) = v[i];
     return result;
 }
 
 void ADPController::updateCritic(const Eigen::VectorXd& state, const Eigen::VectorXd& target) {
     Eigen::VectorXd error = target - state;
-
     std::vector<double> state_vec = eigenToVector(error);
     std::vector<double> action_vec = prev_action_;
 
@@ -71,13 +66,11 @@ void ADPController::updateCritic(const Eigen::VectorXd& state, const Eigen::Vect
 
     std::vector<double> grad(1, td_error);
     critic_network_.updateWeights(grad, critic_learning_rate_);
-
     prev_critic_value_ = critic_output;
 }
 
 void ADPController::updateAction(const Eigen::VectorXd& state, const Eigen::VectorXd& target) {
     Eigen::VectorXd error = target - state;
-
     std::vector<double> state_vec = eigenToVector(error);
     std::vector<double> action_vec = action_network_.forward(state_vec);
 
@@ -85,34 +78,28 @@ void ADPController::updateAction(const Eigen::VectorXd& state, const Eigen::Vect
     critic_input.insert(critic_input.end(), action_vec.begin(), action_vec.end());
 
     std::vector<double> critic_output = critic_network_.forward(critic_input);
-
     std::vector<double> action_grad(action_vec.size(), 0.0);
+
     for (size_t i = 0; i < action_grad.size(); ++i) {
         action_grad[i] = -critic_output[0] * 0.1;
     }
 
     action_network_.updateWeights(action_grad, learning_rate_);
-
     prev_action_ = action_vec;
 }
 
 void ADPController::computeControl(const Eigen::VectorXd& state,
                                    const Eigen::VectorXd& target,
                                    Eigen::VectorXd& output) {
-    if (output.size() != 12) {
-        output.resize(12);
-    }
-
+    if (output.size() != 8) output.resize(8);
     if (state.size() != 6 || target.size() != 6) {
         output.setZero();
         return;
     }
 
     Eigen::VectorXd error = target - state;
-
     std::vector<double> state_vec = eigenToVector(error);
     std::vector<double> action_vec = action_network_.forward(state_vec);
-
     Eigen::VectorXd u = vectorToEigen(action_vec);
 
     if (is_initialized_) {
@@ -120,23 +107,26 @@ void ADPController::computeControl(const Eigen::VectorXd& state,
         updateAction(state, target);
     }
     is_initialized_ = true;
-
     prev_state_error_ = error;
 
-    output.setZero();
-    output(0) = u(0);  // 左髋横滚
-    output(1) = u(1);  // 左髋俯仰
-    output(2) = u(1) * 0.5;  // 左膝俯仰
-    output(3) = 0.0;  // 左轮
-    output(4) = -u(0);  // 右髋横滚
-    output(5) = u(1);  // 右髋俯仰
-    output(6) = u(1) * 0.5;  // 右膝俯仰
-    output(7) = 0.0;  // 右轮
+    // pitch → 轮子主平衡
+    double wheel_torque = u(1);
+    double hip_pitch_aux = u(1) * 0.3;
 
-    double max_torque = params_.max_torque;
+    output.setZero();
+    output(0) = u(0);                          // 左hip_roll
+    output(1) = hip_pitch_aux;                 // 左hip_pitch
+    output(2) = hip_pitch_aux * 0.5;           // 左knee_pitch
+    output(3) = wheel_torque / 2.0 + u(2);     // 左轮
+    output(4) = -u(0);                         // 右hip_roll
+    output(5) = hip_pitch_aux;                 // 右hip_pitch
+    output(6) = hip_pitch_aux * 0.5;           // 右knee_pitch
+    output(7) = wheel_torque / 2.0 - u(2);     // 右轮
+
+    double max_tau = params_.max_torque;
     for (int i = 0; i < 8; ++i) {
-        if (output(i) > max_torque) output(i) = max_torque;
-        if (output(i) < -max_torque) output(i) = -max_torque;
+        if (output(i) > max_tau) output(i) = max_tau;
+        if (output(i) < -max_tau) output(i) = -max_tau;
     }
 }
 

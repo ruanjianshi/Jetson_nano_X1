@@ -1,0 +1,26 @@
+# Goal
+string shape_name         # 目标形状: triangle, square, rectangle, pentagon, hexagon, circle, all
+int32 camera_index        # 摄像头索引，默认 0
+int32 width               # 分辨率宽度，默认 640
+int32 height              # 分辨率高度，默认 480
+float32 min_area          # 最小面积，默认 1000
+float32 similarity        # 形状相似度阈值(0-1)，默认 0.8
+bool publish_image        # 是否发布处理后图像
+float32 ref_distance      # 参考距离(cm)，默认 50.0
+float32 ref_area          # 参考距离下的物体面积，默认 10000
+
+---
+# Result
+bool success
+string message
+int32 num_detections
+float32 total_time
+float32 avg_fps
+---
+# Feedback
+int32 frame_count
+float32 fps
+string status
+int32 detections_count
+string detected_shape
+float32 processing_time

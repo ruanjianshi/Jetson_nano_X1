@@ -1,6 +1,6 @@
 /*
- * MPC Controller Implementation
- * ===============================
+ * MPC Controller Implementation (URDF匹配版)
+ * ==========================================
  */
 
 #include "mpc_controller.h"
@@ -9,18 +9,18 @@
 namespace balance_control {
 
 MPCController::MPCController()
-    : horizon_(10)   // 默认预测10步
-    , dt_(0.01)      // 默认10ms时间步长
+    : horizon_(10)
+    , dt_(0.01)
 {
-    // 初始化为单位矩阵
     A_.setIdentity(6, 6);
+    // 初始化控制矩阵 B: 简单的对角输入模型 dt*I
     B_.setZero(6, 6);
+    for (int i = 0; i < 6; ++i) B_(i, i) = dt_;
     Q_mpc_.setIdentity(6, 6);
     R_mpc_.setIdentity(6, 6);
 }
 
 void MPCController::reset() {
-    // 清除预测序列
     predicted_states_.clear();
     control_inputs_.clear();
 }
@@ -28,24 +28,23 @@ void MPCController::reset() {
 void MPCController::computeControl(const Eigen::VectorXd& state,
                                   const Eigen::VectorXd& target,
                                   Eigen::VectorXd& output) {
-    // 检查输入维度
+    if (output.size() != 8) {
+        output.resize(8);
+    }
+
     if (state.size() < 6 || target.size() < 6) {
+        output.setZero();
         return;
     }
 
-    // 初始状态
     Eigen::VectorXd x0 = state;
 
-    // 初始化预测序列
     predicted_states_.resize(horizon_ + 1);
     control_inputs_.resize(horizon_);
 
-    // 第一个预测状态是当前状态
     predicted_states_[0] = x0;
 
-    // 预测未来状态
     for (size_t k = 0; k < horizon_; ++k) {
-        // 获取控制输入 (如果没有则为零)
         Eigen::VectorXd u_k(6);
         u_k.setZero();
 
@@ -53,46 +52,51 @@ void MPCController::computeControl(const Eigen::VectorXd& state,
             u_k = control_inputs_[k - 1];
         }
 
-        // 使用模型预测下一个状态: x(k+1) = A*x(k) + B*u(k)
         Eigen::VectorXd x_next = A_ * predicted_states_[k] + B_ * u_k;
         predicted_states_[k + 1] = x_next;
-
-        // 保存控制输入
         control_inputs_[k] = u_k;
     }
 
-    // 求解QP得到最优控制
     Eigen::VectorXd u_optimal(6);
-    solveQP(x0, u_optimal);
+    solveQP(x0, target, u_optimal);
 
-    // 构建输出向量
-    output.resize(12);
-    output.segment<6>(0) = u_optimal;  // 前6个是控制力/力矩
-    output.segment<6>(6).setZero();    // 后6个保留
+    // 映射: pitch → 轮子主平衡, roll → hip_roll, yaw → wheel差速
+    double wheel_torque = u_optimal(1) + u_optimal(4);
+    double wheel_diff   = u_optimal(2) + u_optimal(5);
+    double hip_pitch_aux = u_optimal(1) * 0.3;
+
+    output.setZero();
+    output(0) = u_optimal(0);                  // 左hip_roll
+    output(1) = hip_pitch_aux;                 // 左hip_pitch
+    output(2) = hip_pitch_aux * 0.5;           // 左knee_pitch
+    output(3) = wheel_torque / 2.0 + wheel_diff;  // 左轮
+    output(4) = -u_optimal(0);                 // 右hip_roll
+    output(5) = hip_pitch_aux;                 // 右hip_pitch
+    output(6) = hip_pitch_aux * 0.5;           // 右knee_pitch
+    output(7) = wheel_torque / 2.0 - wheel_diff;  // 右轮
+
+    double max_tau = params_.max_torque;
+    for (int i = 0; i < 8; ++i) {
+        output(i) = std::max(-max_tau, std::min(max_tau, output(i)));
+    }
 }
 
-void MPCController::solveQP(const Eigen::VectorXd& x0, Eigen::VectorXd& u_optimal) {
-    // 初始化最优控制为零
+void MPCController::solveQP(const Eigen::VectorXd& x0, const Eigen::VectorXd& target,
+                             Eigen::VectorXd& u_optimal) {
     u_optimal.setZero();
 
-    // 使用梯度下降法求解
-    Eigen::VectorXd x_pred = x0;
-    for (size_t k = 0; k < horizon_; ++k) {
-        // 计算梯度: grad = B' * (x_pred - x0)
-        // 更新控制: u = u - alpha * grad
-        Eigen::VectorXd u_k = -0.5 * (R_mpc_ + Eigen::MatrixXd::Identity(6, 6)).inverse() * B_.transpose() * (x_pred - x0);
+    Eigen::VectorXd error = target - x0;
 
-        // 限制控制输出在允许范围内
-        for (int i = 0; i < 6; ++i) {
-            u_k(i) = std::max(-params_.max_torque, std::min(params_.max_torque, u_k(i)));
-        }
+    // 反馈 u = -K * error, K ≈ 1000*I (匹配LQR增益 ~10*B^-1)
+    Eigen::VectorXd u_k = -1000.0 * Q_mpc_ * B_.transpose() * error;
 
-        // 更新预测状态
-        x_pred = A_ * x_pred + B_ * u_k;
-        
-        // 保存最优控制
-        u_optimal = u_k;
+    // 限幅
+    for (int i = 0; i < 6; ++i) {
+        u_k(i) = std::max(-params_.max_torque,
+                 std::min(params_.max_torque, u_k(i)));
     }
+
+    u_optimal = u_k;
 }
 
 void MPCController::setMPCParams(size_t horizon, double dt) {

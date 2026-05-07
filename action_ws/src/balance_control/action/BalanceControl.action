@@ -1,14 +1,16 @@
 # Balance Control Action
-# Goal: 选择算法、设置目标姿态、启用/停用控制
+# Goal: 设置算法、目标姿态、控制命令
 # Feedback: 当前姿态、控制输出、状态
 # Result: 执行结果
 
 # Goal message
-uint8 algorithm_id  # 0=LQR, 1=VMC, 2=MPC
+uint8 command              # 0=CMD_STOP, 1=CMD_ENABLE, 2=CMD_DISABLE, 3=CMD_SWITCH_ALGO, 4=CMD_SET_TARGET
+uint8 algorithm            # 0=LQR, 1=VMC, 2=MPC, 3=ADP
 float64 target_roll
 float64 target_pitch
 float64 target_yaw
-bool enable_control
+float64 target_speed       # 目标速度 m/s (预留)
+float64 target_yaw_rate    # 目标偏航率 rad/s (预留)
 ---
 # Result message
 bool success
@@ -20,7 +22,7 @@ float64 current_roll
 float64 current_pitch
 float64 current_yaw
 float64[] joint_positions
-float64[] torques
+float64[] joint_torques
 string algorithm_name
 bool control_enabled
 string status_message

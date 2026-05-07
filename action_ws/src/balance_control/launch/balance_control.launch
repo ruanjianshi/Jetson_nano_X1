@@ -59,7 +59,7 @@ Email: 2408128687@qq.com
 
     <!-- ========== 平衡控制算法服务器 ========== -->
     <node name="balance_control_server" pkg="balance_control" type="balance_control_server" output="screen" required="true">
-        <param name="algorithm" type="string" value="$(arg algorithm)" />
+        <param name="algorithm" type="int" value="$(arg algorithm)" />
         <param name="target_roll" type="double" value="$(arg target_roll)" />
         <param name="target_pitch" type="double" value="$(arg target_pitch)" />
         <param name="target_yaw" type="double" value="$(arg target_yaw)" />
@@ -67,7 +67,7 @@ Email: 2408128687@qq.com
     </node>
 
     <!-- ========== 平衡控制客户端 ========== -->
-    <node name="balance_algorithm_client" pkg="balance_control" type="balance_algorithm_client" output="screen">
+    <node name="robot_command_client" pkg="balance_control" type="robot_command_client" output="screen">
         <param name="algorithm" type="int" value="$(arg algorithm)" />
         <param name="target_roll" type="double" value="$(arg target_roll)" />
         <param name="target_pitch" type="double" value="$(arg target_pitch)" />

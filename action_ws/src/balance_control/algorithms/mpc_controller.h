@@ -88,7 +88,7 @@ private:
      * @param u_optimal 最优控制输入
      * @details 使用梯度下降法求解QP问题
      */
-    void solveQP(const Eigen::VectorXd& x0, Eigen::VectorXd& u_optimal);
+    void solveQP(const Eigen::VectorXd& x0, const Eigen::VectorXd& target, Eigen::VectorXd& u_optimal);
 
     size_t horizon_;       // 预测时域步数
     double dt_;             // 时间步长 (秒)

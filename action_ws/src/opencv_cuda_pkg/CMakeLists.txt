@@ -20,6 +20,8 @@ add_action_files(
   FILES
   OpenCVDetection.action
   ImageProcessing.action
+  ColorTracking.action
+  ShapeDetection.action
 )
 
 generate_messages(
@@ -40,6 +42,10 @@ include_directories(
 catkin_install_python(PROGRAMS
   scripts/opencv_detection_server.py
   scripts/opencv_detection_client.py
+  scripts/color_tracking_server.py
+  scripts/color_tracking_client.py
+  scripts/shape_detection_server.py
+  scripts/shape_detection_client.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

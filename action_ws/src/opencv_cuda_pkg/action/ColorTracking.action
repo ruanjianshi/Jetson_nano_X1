@@ -1,0 +1,25 @@
+# Goal
+string color_name        # 追踪颜色: red, green, blue, yellow, orange, purple, pink, cyan, white, black
+string camera_topic       # 摄像头话题，默认为 /usb_cam/image_raw
+int32 camera_index        # 摄像头索引，默认为 0
+int32 width               # 分辨率宽度，默认 640
+int32 height              # 分辨率高度，默认 480
+float32 min_area          # 最小检测面积，默认 500
+bool publish_image        # 是否发布处理后图像，默认 true
+float32 ref_distance      # 参考距离(cm)，默认 50.0
+float32 ref_area          # 参考距离下的物体面积，默认 10000
+
+---
+# Result
+bool success
+string message
+int32 num_detections      # 检测到的目标数量
+float32 total_time         # 总处理时间
+float32 avg_fps            # 平均帧率
+---
+# Feedback
+int32 frame_count          # 已处理帧数
+float32 fps                # 当前帧率
+string status              # 状态信息
+int32 detections_count     # 当前帧检测数量
+float32 processing_time    # 当前帧处理时间

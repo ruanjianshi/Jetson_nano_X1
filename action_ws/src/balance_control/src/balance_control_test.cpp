@@ -56,14 +56,14 @@ public:
                                          &BalanceControlTest::motorAngleCallback, this);
 
         // 电机配置
-        motor_configs_.push_back({"joint_left_leg_1", 0, 3, 1});   // 左髋横滚
-        motor_configs_.push_back({"joint_left_leg_2", 0, 3, 1});   // 左髋俯仰
-        motor_configs_.push_back({"joint_left_leg_3", 0, 3, 2});   // 左膝俯仰
-        motor_configs_.push_back({"joint_left_leg_4", 0, 3, 2});   // 左轮
-        motor_configs_.push_back({"joint_right_leg_1", 1, 2, 1});  // 右髋横滚
-        motor_configs_.push_back({"joint_right_leg_2", 1, 2, 1});  // 右髋俯仰
-        motor_configs_.push_back({"joint_right_leg_3", 1, 5, 2});  // 右膝俯仰
-        motor_configs_.push_back({"joint_right_leg_4", 1, 5, 2});  // 右轮
+        motor_configs_.push_back({"left_joint_1", 0, 3, 1});   // 左髋横滚
+        motor_configs_.push_back({"left_joint_2", 0, 3, 1});   // 左髋俯仰
+        motor_configs_.push_back({"left_joint_3", 0, 3, 2});   // 左膝俯仰
+        motor_configs_.push_back({"left_joint_wheel", 0, 3, 2});  // 左轮
+        motor_configs_.push_back({"right_joint_1", 1, 2, 1});  // 右髋横滚
+        motor_configs_.push_back({"right_joint_2", 1, 2, 1});  // 右髋俯仰
+        motor_configs_.push_back({"right_joint_3", 1, 5, 2});  // 右膝俯仰
+        motor_configs_.push_back({"right_joint_wheel", 1, 5, 2});  // 右轮
 
         ROS_INFO("==========================================");
         ROS_INFO("Balance Control Test Node Started");
@@ -179,16 +179,16 @@ private:
         ROS_INFO("----------------------------------------");
 
         // 左腿电机 (4个)
-        results.push_back({"joint_left_leg_1", hip_roll, 0.0, 20.0, 2.0});
-        results.push_back({"joint_left_leg_2", hip_pitch, 0.0, 20.0, 2.0});
-        results.push_back({"joint_left_leg_3", knee_pitch, 0.0, 15.0, 1.5});
-        results.push_back({"joint_left_leg_4", wheel_angle, 0.0, 10.0, 1.0});
+        results.push_back({"left_joint_1", hip_roll, 0.0, 20.0, 2.0});
+        results.push_back({"left_joint_2", hip_pitch, 0.0, 20.0, 2.0});
+        results.push_back({"left_joint_3", knee_pitch, 0.0, 15.0, 1.5});
+        results.push_back({"left_joint_wheel", wheel_angle, 0.0, 10.0, 1.0});
 
         // 右腿电机 (4个) - roll方向相反
-        results.push_back({"joint_right_leg_1", -hip_roll, 0.0, 20.0, 2.0});
-        results.push_back({"joint_right_leg_2", hip_pitch, 0.0, 20.0, 2.0});
-        results.push_back({"joint_right_leg_3", knee_pitch, 0.0, 15.0, 1.5});
-        results.push_back({"joint_right_leg_4", wheel_angle, 0.0, 10.0, 1.0});
+        results.push_back({"right_joint_1", -hip_roll, 0.0, 20.0, 2.0});
+        results.push_back({"right_joint_2", hip_pitch, 0.0, 20.0, 2.0});
+        results.push_back({"right_joint_3", knee_pitch, 0.0, 15.0, 1.5});
+        results.push_back({"right_joint_wheel", wheel_angle, 0.0, 10.0, 1.0});
 
         // 打印结果
         for (const auto& r : results) {

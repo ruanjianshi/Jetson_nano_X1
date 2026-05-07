@@ -179,13 +179,11 @@ TargetOrientation RobotCommandClient::computeTargetOrientation(
 
 void RobotCommandClient::sendCommand(RobotCommandType command, double speed,
                                      double yaw_rate, double jump_height, double duration) {
-    // 计算目标姿态
     TargetOrientation target = computeTargetOrientation(command, speed, yaw_rate);
 
-    // 创建 Action Goal
     balance_control::BalanceControlGoal goal;
-    goal.enable_control = true;
-    goal.algorithm_id = 0;  // 0=LQR, 1=VMC, 2=MPC
+    goal.command = 4;        // CMD_SET_TARGET
+    goal.algorithm = 0;      // 0=LQR
     goal.target_roll = target.roll;
     goal.target_pitch = target.pitch;
     goal.target_yaw = target.yaw;
@@ -211,21 +209,21 @@ void RobotCommandClient::sendCommand(RobotCommandType command, double speed,
 
 void RobotCommandClient::sendStop() {
     balance_control::BalanceControlGoal goal;
-    goal.enable_control = false;
+    goal.command = 2;          // CMD_DISABLE
     action_client_.sendGoal(goal);
     ROS_INFO("发送停止命令");
 }
 
 void RobotCommandClient::sendEnable() {
     balance_control::BalanceControlGoal goal;
-    goal.enable_control = true;
+    goal.command = 1;          // CMD_ENABLE
     action_client_.sendGoal(goal);
     ROS_INFO("发送启用命令");
 }
 
 void RobotCommandClient::sendTarget(double roll, double pitch, double yaw) {
     balance_control::BalanceControlGoal goal;
-    goal.enable_control = true;
+    goal.command = 4;          // CMD_SET_TARGET
     goal.target_roll = roll;
     goal.target_pitch = pitch;
     goal.target_yaw = yaw;

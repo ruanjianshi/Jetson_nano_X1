@@ -81,11 +81,14 @@ struct IMUConfig {
  * @brief 腿部几何参数
  */
 struct LegGeometry {
-    double upper_leg_length;        // 大腿长度 (m)
-    double lower_leg_length;         // 小腿长度 (m)
-    double hip_offset_x;              // 髋关节X偏移 (m)
-    double hip_offset_y;              // 髋关节Y偏移 (m)
-    double hip_offset_z;             // 髋关节Z偏移 (m)
+    double upper_leg_length;        // L1: 大腿长度 (m), j1→j2
+    double lower_leg_length;        // L2: 小腿长度 (m), j2→j3
+    double wheel_offset_length;     // L3: 踝→轮长度 (m), j3→wheel
+    double hip_offset_x;             // 髋关节X偏移 (m)
+    double hip_offset_y;             // 髋关节Y偏移 (m)
+    double hip_offset_z;            // 髋关节Z偏移 (m)
+    double wheel_offset_y;           // 轮心Y净偏移 (m)
+    double wheel_offset_z;           // 膝→轮心Z净偏移 (m)
     double leg_length_min;           // 最小腿长 (m)
     double leg_length_max;           // 最大腿长 (m)
     double foot_height_min;          // 足端最小高度 (m)

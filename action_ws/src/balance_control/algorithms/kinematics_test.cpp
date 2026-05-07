@@ -63,29 +63,29 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "尝试加载YAML配置: " << yaml_path << "\n\n";
-    
+
     bool loaded = loadFromYaml(yaml_path, params);
     if (loaded) {
         std::cout << "YAML加载成功!\n\n";
         printParams(params);
     } else {
-        std::cout << "YAML加载失败,使用默认参数!\n\n";
-        // 设置默认参数
-        params.L1 = 0.20;
-        params.L2 = 0.20;
-        params.hip_offset_x = 0.10;
-        params.hip_offset_y = 0.0;
-        params.hip_offset_z = 0.0;
+        std::cout << "YAML加载失败,使用默认URDF参数!\n\n";
+        params.L1 = 0.0725;
+        params.L2 = 0.301;
+        params.hip_offset_x = 0.069;
+        params.hip_offset_y = -0.124;
+        params.hip_offset_z = -0.001;
         params.wheel_radius = 0.10;
         params.wheel_base = 0.40;
-        params.ankle_offset = 0.05;
-        
-        params.hip_roll_min = -1.57;
-        params.hip_roll_max = 1.57;
-        params.hip_pitch_min = -1.57;
-        params.hip_pitch_max = 1.57;
-        params.knee_pitch_min = -2.35;
-        params.knee_pitch_max = 0.0;
+        params.ankle_offset_x = 0.224;
+        params.ankle_offset_z = -0.200;
+
+        params.hip_roll_min = -3.1416;
+        params.hip_roll_max = 3.1416;
+        params.hip_pitch_min = -2.0944;
+        params.hip_pitch_max = 2.0944;
+        params.knee_pitch_min = -0.8727;
+        params.knee_pitch_max = 0.8727;
     }
 
     std::cout << "\n";

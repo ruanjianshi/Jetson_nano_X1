@@ -29,21 +29,24 @@ RobotHardwareParams::RobotHardwareParams() {
 }
 
 void RobotHardwareParams::initDefaultParams() {
-    // ========== 机器人基本信息 ==========
-    robot_name_ = "wheeled_legged_robot";
+    // ========== 机器人基本信息 (URDF提取) ==========
+    robot_name_ = "xqrobotV2";
     robot_type_ = "biped_wheeled";
-    mass_ = 15.0;
+    mass_ = 12.59;  // URDF: 5.408 + 2*(0.174+0.673+0.420+2.323)
     gravity_ = 9.81;
 
-    // ========== 腿部几何 ==========
-    leg_geometry_.upper_leg_length = 0.20;
-    leg_geometry_.lower_leg_length = 0.20;
-    leg_geometry_.hip_offset_x = 0.10;
-    leg_geometry_.hip_offset_y = 0.0;
-    leg_geometry_.hip_offset_z = 0.0;
-    leg_geometry_.leg_length_min = 0.20;
-    leg_geometry_.leg_length_max = 0.40;
-    leg_geometry_.foot_height_min = -0.30;
+    // ========== 腿部几何 (URDF 3段模型) ==========
+    leg_geometry_.upper_leg_length = 0.0725;   // URDF: j1→j2
+    leg_geometry_.lower_leg_length = 0.301;    // URDF: j2→j3
+    leg_geometry_.wheel_offset_length = 0.302; // URDF: j3→wheel (新增L3)
+    leg_geometry_.hip_offset_x = 0.069;        // URDF: joint_1 origin.x
+    leg_geometry_.hip_offset_y = -0.124;       // URDF: joint_1 origin.y
+    leg_geometry_.hip_offset_z = -0.001;       // URDF: joint_1 origin.z
+    leg_geometry_.wheel_offset_y = -0.022;     // URDF净偏移
+    leg_geometry_.wheel_offset_z = -0.399;     // URDF净偏移
+    leg_geometry_.leg_length_min = 0.15;
+    leg_geometry_.leg_length_max = 0.70;
+    leg_geometry_.foot_height_min = -0.50;
     leg_geometry_.foot_height_max = 0.20;
 
     // ========== 轮子配置 ==========
@@ -64,38 +67,36 @@ void RobotHardwareParams::initDefaultParams() {
     imu_config_.neutral_roll = 0.0;
     imu_config_.neutral_pitch = 0.0;
     imu_config_.neutral_yaw = 0.0;
-    imu_config_.balance_roll_max = 0.52;   // 约30度
+    imu_config_.balance_roll_max = 0.52;
     imu_config_.balance_pitch_max = 0.52;
     imu_config_.balance_yaw_max = 3.14;
 
-    // ========== R86电机限幅 ==========
-    r86_limits_.max_torque = 100.0;
-    r86_limits_.max_velocity = 37.7;
+    // ========== R86电机限幅 (URDF: effort=80, velocity=27.23) ==========
+    r86_limits_.max_torque = 80.0;
+    r86_limits_.max_velocity = 27.23;
     r86_limits_.position_min = -6.28;
     r86_limits_.position_max = 6.28;
     r86_limits_.kp_default = 20.0;
     r86_limits_.kd_default = 2.0;
 
-    // ========== R52电机限幅 ==========
-    r52_limits_.max_torque = 50.0;
-    r52_limits_.max_velocity = 25.1;
+    // ========== R52电机限幅 (URDF: effort=19, velocity=13.61) ==========
+    r52_limits_.max_torque = 19.0;
+    r52_limits_.max_velocity = 13.61;
     r52_limits_.position_min = -6.28;
     r52_limits_.position_max = 6.28;
     r52_limits_.kp_default = 15.0;
     r52_limits_.kd_default = 1.5;
 
-    // ========== 电机配置 (8个电机) ==========
-    // 左腿 (4个电机)
-    motor_configs_.push_back({"joint_left_leg_1", 3, 1, "POWER_FLOW_R86", "hip_roll", 1});
-    motor_configs_.push_back({"joint_left_leg_2", 3, 1, "POWER_FLOW_R86", "hip_pitch", 1});
-    motor_configs_.push_back({"joint_left_leg_3", 3, 2, "POWER_FLOW_R52", "knee_pitch", 1});
-    motor_configs_.push_back({"joint_left_leg_4", 3, 2, "POWER_FLOW_R52", "wheel", 1});
+    // ========== 电机配置 (URDF关节命名: left_joint_1/2/3/wheel) ==========
+    motor_configs_.push_back({"left_joint_1", 3, 1, "POWER_FLOW_R86", "hip_roll", 1});
+    motor_configs_.push_back({"left_joint_2", 3, 1, "POWER_FLOW_R86", "hip_pitch", 1});
+    motor_configs_.push_back({"left_joint_3", 3, 2, "POWER_FLOW_R52", "knee_pitch", 1});
+    motor_configs_.push_back({"left_joint_wheel", 3, 2, "POWER_FLOW_R52", "wheel", 1});
 
-    // 右腿 (4个电机)
-    motor_configs_.push_back({"joint_right_leg_1", 2, 1, "POWER_FLOW_R86", "hip_roll", -1});
-    motor_configs_.push_back({"joint_right_leg_2", 2, 1, "POWER_FLOW_R86", "hip_pitch", 1});
-    motor_configs_.push_back({"joint_right_leg_3", 5, 2, "POWER_FLOW_R52", "knee_pitch", 1});
-    motor_configs_.push_back({"joint_right_leg_4", 5, 2, "POWER_FLOW_R52", "wheel", 1});
+    motor_configs_.push_back({"right_joint_1", 2, 1, "POWER_FLOW_R86", "hip_roll", -1});
+    motor_configs_.push_back({"right_joint_2", 2, 1, "POWER_FLOW_R86", "hip_pitch", -1});
+    motor_configs_.push_back({"right_joint_3", 5, 2, "POWER_FLOW_R52", "knee_pitch", -1});
+    motor_configs_.push_back({"right_joint_wheel", 5, 2, "POWER_FLOW_R52", "wheel", -1});
 
     // ========== 控制参数 ==========
     control_params_.control_frequency = 500;
@@ -116,13 +117,13 @@ void RobotHardwareParams::initDefaultParams() {
     pid_params_.kd_yaw = 0.5;
     pid_params_.ki_yaw = 0.0;
 
-    // ========== 关节软限位 ==========
-    joint_limits_.hip_roll_min = -1.57;
-    joint_limits_.hip_roll_max = 1.57;
-    joint_limits_.hip_pitch_min = -1.57;
-    joint_limits_.hip_pitch_max = 1.57;
-    joint_limits_.knee_pitch_min = -2.35;
-    joint_limits_.knee_pitch_max = 0.0;
+    // ========== 关节软限位 (URDF limit标签提取) ==========
+    joint_limits_.hip_roll_min = -3.1416;   // URDF: right_joint_1 lower
+    joint_limits_.hip_roll_max = 3.1416;    // URDF: left_joint_1 upper
+    joint_limits_.hip_pitch_min = -2.0944;  // URDF: right_joint_2 lower
+    joint_limits_.hip_pitch_max = 2.0944;   // URDF: left_joint_2 upper
+    joint_limits_.knee_pitch_min = -0.8727; // URDF: joint_3 lower
+    joint_limits_.knee_pitch_max = 0.8727;  // URDF: joint_3 upper
     joint_limits_.wheel_min = -50.0;
     joint_limits_.wheel_max = 50.0;
 
@@ -160,9 +161,12 @@ void RobotHardwareParams::loadFromParamServer(ros::NodeHandle& nh,
     // ========== 加载腿部几何 ==========
     nh.param(ns + "leg/upper_leg_length", leg_geometry_.upper_leg_length, leg_geometry_.upper_leg_length);
     nh.param(ns + "leg/lower_leg_length", leg_geometry_.lower_leg_length, leg_geometry_.lower_leg_length);
+    nh.param(ns + "leg/wheel_offset_length", leg_geometry_.wheel_offset_length, leg_geometry_.wheel_offset_length);
     nh.param(ns + "leg/hip_offset_x", leg_geometry_.hip_offset_x, leg_geometry_.hip_offset_x);
     nh.param(ns + "leg/hip_offset_y", leg_geometry_.hip_offset_y, leg_geometry_.hip_offset_y);
     nh.param(ns + "leg/hip_offset_z", leg_geometry_.hip_offset_z, leg_geometry_.hip_offset_z);
+    nh.param(ns + "leg/wheel_offset_y", leg_geometry_.wheel_offset_y, leg_geometry_.wheel_offset_y);
+    nh.param(ns + "leg/wheel_offset_z", leg_geometry_.wheel_offset_z, leg_geometry_.wheel_offset_z);
     nh.param(ns + "leg/leg_length_min", leg_geometry_.leg_length_min, leg_geometry_.leg_length_min);
     nh.param(ns + "leg/leg_length_max", leg_geometry_.leg_length_max, leg_geometry_.leg_length_max);
     nh.param(ns + "leg/foot_height_min", leg_geometry_.foot_height_min, leg_geometry_.foot_height_min);
@@ -299,9 +303,12 @@ void RobotHardwareParams::loadFromYaml(const std::string& file_path) {
     if (config["leg"]) {
         leg_geometry_.upper_leg_length = config["leg"]["upper_leg_length"].as<double>(leg_geometry_.upper_leg_length);
         leg_geometry_.lower_leg_length = config["leg"]["lower_leg_length"].as<double>(leg_geometry_.lower_leg_length);
+        leg_geometry_.wheel_offset_length = config["leg"]["wheel_offset_length"].as<double>(leg_geometry_.wheel_offset_length);
         leg_geometry_.hip_offset_x = config["leg"]["hip_offset_x"].as<double>(leg_geometry_.hip_offset_x);
         leg_geometry_.hip_offset_y = config["leg"]["hip_offset_y"].as<double>(leg_geometry_.hip_offset_y);
         leg_geometry_.hip_offset_z = config["leg"]["hip_offset_z"].as<double>(leg_geometry_.hip_offset_z);
+        leg_geometry_.wheel_offset_y = config["leg"]["wheel_offset_y"].as<double>(leg_geometry_.wheel_offset_y);
+        leg_geometry_.wheel_offset_z = config["leg"]["wheel_offset_z"].as<double>(leg_geometry_.wheel_offset_z);
         leg_geometry_.leg_length_min = config["leg"]["leg_length_min"].as<double>(leg_geometry_.leg_length_min);
         leg_geometry_.leg_length_max = config["leg"]["leg_length_max"].as<double>(leg_geometry_.leg_length_max);
     }
@@ -411,8 +418,9 @@ void RobotHardwareParams::printSummary() const {
              robot_name_.c_str(), robot_type_.c_str(), mass_, gravity_);
     
     ROS_INFO("  [Leg Geometry]");
-    ROS_INFO("    Upper: %.3fm, Lower: %.3fm", leg_geometry_.upper_leg_length, leg_geometry_.lower_leg_length);
+    ROS_INFO("    L1=%.3fm, L2=%.3fm, L3=%.3fm", leg_geometry_.upper_leg_length, leg_geometry_.lower_leg_length, leg_geometry_.wheel_offset_length);
     ROS_INFO("    Hip offset: X=%.3f, Y=%.3f, Z=%.3f", leg_geometry_.hip_offset_x, leg_geometry_.hip_offset_y, leg_geometry_.hip_offset_z);
+    ROS_INFO("    Whl offset: Y=%.3f, Z=%.3f", leg_geometry_.wheel_offset_y, leg_geometry_.wheel_offset_z);
     ROS_INFO("    Leg length range: %.3f-%.3fm", leg_geometry_.leg_length_min, leg_geometry_.leg_length_max);
     ROS_INFO("    Foot height range: %.3f-%.3fm", leg_geometry_.foot_height_min, leg_geometry_.foot_height_max);
     
@@ -608,15 +616,10 @@ Eigen::Matrix4d RobotHardwareParams::getHipTransform(uint8_t leg) const {
 }
 
 double RobotHardwareParams::computeLegLength(double hip_pitch, double knee_pitch) const {
-    // 使用余弦定理计算腿长
-    // L = sqrt(L1^2 + L2^2 - 2*L1*L2*cos(angle_sum))
-    double angle_sum = hip_pitch + knee_pitch;
-    double L1 = leg_geometry_.upper_leg_length;
+    // L2+L3 余弦定理: L_eff² = L2² + L3² - 2·L2·L3·cos(π-knee_pitch)
     double L2 = leg_geometry_.lower_leg_length;
-
-    double leg_length = std::sqrt(L1 * L1 + L2 * L2 - 2 * L1 * L2 * std::cos(angle_sum));
-
-    return leg_length;
+    double L3 = leg_geometry_.wheel_offset_length;
+    return std::sqrt(L2 * L2 + L3 * L3 - 2.0 * L2 * L3 * std::cos(M_PI - knee_pitch));
 }
 
 } // namespace balance_control
