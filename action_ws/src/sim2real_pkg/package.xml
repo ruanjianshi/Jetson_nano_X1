@@ -4,7 +4,7 @@
   <version>1.0.0</version>
   <description>Sim2Real 部署包 - YOLO PT转ONNX + 强化学习模型转ONNX推理</description>
 
-  <maintainer email="jetson@todo.todo">jetson</maintainer>
+  <maintainer email="2408128687@qq.com">Qi Xiao</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>catkin</buildtool_depend>

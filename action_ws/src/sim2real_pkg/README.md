@@ -299,3 +299,8 @@ A: 无法加速。aarch64 的 ONNX Runtime CPU 推理受限于 ARM Cortex-A57 �
 ## License
 
 MIT
+
+## 作者
+
+**作者**: Qi Xiao  
+**邮箱**: 2408128687@qq.com

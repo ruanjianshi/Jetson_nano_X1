@@ -18,7 +18,7 @@ I2C 通信 Action Client
       _register_address:=0x00 \
       _data:=0xAA
   
-作者: Jetson Nano
+作者: Qi Xiao
 日期: 2026-03-30
 """
 

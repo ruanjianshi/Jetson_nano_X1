@@ -1,0 +1,4 @@
+JETSON_IP="10.88.168.44"
+JETSON_USER="jetson"
+JETSON_PATH="/home/jetson/Desktop/Jetson_Nano"
+PC_WS="/home/xq/nano_distribute"

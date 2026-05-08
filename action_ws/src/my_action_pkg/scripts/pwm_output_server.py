@@ -23,7 +23,7 @@ GPIO PWM 输出 Action Server
   source install/setup.bash
   sudo rosrun my_action_pkg pwm_output_server.py
   
-作者: Jetson Nano
+作者: Qi Xiao
 日期: 2026-03-31
 """
 

@@ -4,7 +4,7 @@
   <version>1.0.0</version>
   <description>OpenCV 目标检测包，支持 CUDA 加速</description>
 
-  <maintainer email="jetson@todo.todo">jetson</maintainer>
+  <maintainer email="2408128687@qq.com">Qi Xiao</maintainer>
 
   <license>MIT</license>
 

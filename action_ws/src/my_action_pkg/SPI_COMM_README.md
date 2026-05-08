@@ -412,6 +412,6 @@ def init_spi(self, spi_bus, device_address):
 
 ---
 
-**作者**: Jetson Nano Developer  
+**作者**: Qi Xiao  
 **日期**: 2026-03-31  
 **版本**: 1.0.0

@@ -34,8 +34,9 @@ Jetson_Nano/
 │       ├── yb_imu_driver/        # 九轴 IMU 驱动
 │       ├── my_action_pkg/        # GPIO/I2C/Serial/SPI/PWM 示例
 │       ├── opencv_cuda_pkg/     # OpenCV CUDA 处理
-│       ├── balance_control/     # 轮腿机器人平衡控制算法包
-│       └── maita_can_comm/       # CAN 通信
+│       ├── maita_can_comm/       # CAN 通信 (脉塔智能 USB-CAN)
+│       ├── distributed_comm/     # PC ↔ Jetson 分布式通信桥接
+│       └── balance_control/     # 轮腿机器人平衡控制算法包
 ├── ROS_Project/                  # 主 ROS 项目
 ├── ThreadPoolProject/           # C++ 多线程测试 (C++20)
 ├── code_design_sample/           # C++ 代码规范示例 (参考学习)
@@ -102,6 +103,21 @@ cd action_ws && catkin_make
 
 # 环境变量
 source devel/setup.bash
+```
+
+### 4. PC 分布式通信配置
+
+```bash
+# PC 端首次配置
+cd action_ws
+bash src/distributed_comm/scripts/network_setup.sh   # 选 [p], 输入 Jetson IP
+
+# 同步代码到 PC
+bash src/distributed_comm/scripts/scp_transfer.sh config   # 配置双方 IP
+bash src/distributed_comm/scripts/scp_transfer.sh sync-distributed
+
+# PC 端编译 (仅需 distributed_comm)
+cd ~/nano_distribute && catkin_make -DCATKIN_WHITELIST_PACKAGES="distributed_comm"
 ```
 
 ---
@@ -361,6 +377,60 @@ rostopic pub /balance_control/goal balance_control/BalanceControlActionGoal \
 
 ---
 
+### distributed_comm - PC ↔ Jetson 分布式通信
+
+**功能**: 通过 WiFi 实现 PC (Ubuntu 20.04) 与 Jetson Nano 之间的 ROS1 分布式通信
+
+**核心能力**:
+| 模式 | 说明 |
+|------|------|
+| 双向桥接 | Pub/Sub 互通 + 延迟/吞吐量统计 |
+| 吞吐量测试 | 自动递进频率极限测试 |
+| 摄像头采集 | USB/CSI → CompressedImage, 低带宽传输 |
+| **分布式 YOLO** | Jetson 拍照 → PC 推理(CUDA) → 结果返回 |
+| SCP 文件同步 | PC ↔ Jetson 一键传输 |
+
+**分布式 YOLO 推理流程**:
+```
+Jetson: 摄像头采集 ──WiFi──→ PC: YOLOv11 CUDA 推理 ──WiFi──→ Jetson: 显示结果
+```
+
+**启动**:
+```bash
+# 1. Jetson: 网络配置 + roscore
+export ROS_IP=10.88.168.44
+roscore &
+
+# 2. PC: 连接 Jetson Master
+export ROS_MASTER_URI=http://10.88.168.44:11311
+export ROS_IP=10.88.168.60
+
+# 3. 双向桥接测试
+# Jetson
+rosrun distributed_comm jetson_bridge _pub_rate:=50
+# PC
+rosrun distributed_comm pc_bridge _pub_rate:=50
+
+# 4. 分布式 YOLO 推理
+# Jetson: 摄像头 + 显示
+roslaunch distributed_comm camera_bridge.launch
+# PC: CUDA 推理
+roslaunch distributed_comm pc_yolo.launch device:=cuda:0
+```
+
+**WiFi 吞吐量测试 (实测)**:
+```bash
+# Jetson: 固定 200Hz
+rosrun distributed_comm jetson_bridge _pub_rate:=200
+# PC: 自动找到极限
+rosrun distributed_comm rate_tester _start_hz:=50 _step_hz:=50 _interval_s:=5
+```
+实测结果: WiFi 下稳定 210-250 Hz，延迟 ~76ms。
+
+**详细文档**: `action_ws/src/distributed_comm/README.md`
+
+---
+
 ### my_action_pkg - 硬件通信示例
 
 **功能**: GPIO、I2C、Serial、SPI、PWM 的 ROS Action 示例
@@ -565,5 +635,5 @@ cd ThreadPoolProject && make clean
 **作者**: Qi Xiao  
 **邮箱**: 2408128687@qq.com
 
-**最后更新**: 2026-05-06
-**文档版本**: v2.1
+**最后更新**: 2026-05-08
+**文档版本**: v2.2

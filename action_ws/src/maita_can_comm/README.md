@@ -400,3 +400,7 @@ sudo roslaunch maita_can_comm can_comm_maita.launch
 - ✅ CAN 初始化
 - ✅ CAN 帧发送
 - ✅ CAN 帧接收
+## 作者
+
+**作者**: Qi Xiao  
+**邮箱**: 2408128687@qq.com

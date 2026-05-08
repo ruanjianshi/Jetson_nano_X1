@@ -370,6 +370,6 @@ if mode == "binary":
 
 ---
 
-**作者**: Jetson Nano Developer  
+**作者**: Qi Xiao  
 **日期**: 2026-03-30  
 **版本**: 1.0.0

@@ -24,7 +24,7 @@ IMU Serial Action Server
   source devel/setup.bash
   rosrun yb_imu_driver imu_serial_server.py
 
-作者: Jetson Nano
+作者: Qi Xiao
 日期: 2026-04-03
 """
 

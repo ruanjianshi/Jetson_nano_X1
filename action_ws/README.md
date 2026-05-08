@@ -1,173 +1,155 @@
-# Jetson Nano 硬件通信项目
+# Jetson Nano B01 — ROS1 综合项目
 
-这是一个基于 ROS 的 Jetson Nano 硬件通信项目，包含多个硬件接口的功能包。
+基于 ROS1 Noetic 的 Jetson Nano B01 (4GB) 硬件通信、电机控制、传感与视觉项目，支持 **PC 分布式通信**。
 
-## 📦 功能包列表
+## 功能包列表
 
-| 功能包 | 描述 | 硬件接口 | 状态 | 语言 |
-|--------|------|----------|------|------|
-| `my_action_pkg` | 基础硬件通信接口 | 串口/I2C/SPI/GPIO/PWM | ✅ 已完成 | Python/C++ |
-| `maita_can_comm` | 脉塔智能 USB-CAN 通信 | USBCAN-II | ✅ 已完成 | Python/C++ |
+| 功能包 | 描述 | 语言 | 状态 |
+|--------|------|------|------|
+| `my_action_pkg` | 基础硬件 I/O：串口、I2C、SPI、GPIO、PWM | Python/C++ | ✅ |
+| `mcp2515_can_driver` | MCP2515+TJA1050 SPI CAN 驱动 | Python | ✅ |
+| `maita_can_comm` | 脉塔智能 USB-CAN-II 通信 | Python/C++ | ✅ |
+| `yb_imu_driver` | 维特智能 IMU 驱动 (串口/I2C) | C++ | ✅ |
+| `dcu_driver_pkg` | 智元 DCU + PowerFlow 电机驱动 (EtherCAT) | C++ | ✅ |
+| `balance_control` | 轮足机器人平衡控制 (LQR/VMC/MPC/ADP) | Python | ✅ |
+| `yolov11_pkg` | YOLOv11 目标检测 (Jetson 本地推理) | Python | ✅ |
+| `opencv_cuda_pkg` | OpenCV CUDA 检测/跟踪/图像处理 | Python | ✅ |
+| `sim2real_pkg` | Sim2Real 部署 (PT→ONNX, 强化学习推理) | Python | ✅ |
+| `distributed_comm` | **PC ↔ Jetson 分布式通信桥接** | C++/Python | ✅ |
 
-## 🚀 快速开始
+## 快速开始
 
-### 1. 安装依赖
-
-```bash
-sudo apt-get update
-sudo apt-get install -y \
-    python3-serial \
-    python3-smbus2 \
-    python3-can \
-    libusb-1.0-0 \
-    ros-noetic-can-utils
-```
-
-### 2. 编译项目
+### 1. 编译全部
 
 ```bash
-cd /home/jetson/Desktop/Jetson_Nano/action_ws
+cd ~/Desktop/Jetson_Nano/action_ws
 catkin_make
 source devel/setup.bash
 ```
 
-### 3. 使用示例
+> 部分包编译耗时较长，可单独编译：
+> ```bash
+> catkin_make -DCATKIN_WHITELIST_PACKAGES="distributed_comm"
+> ```
 
-#### 脉塔智能 CAN 通信（C++ 版本，最高速率 1Mbps）
+### 2. 硬件接口
 
 ```bash
-# 安装驱动库
-sudo cp src/maita_can_comm/usbcan_ii_libusb_aarch64/libusbcan.so /lib/
-sudo chmod 644 /lib/libusbcan.so
+# 串口
+sudo rosrun my_action_pkg serial_comm_server
 
-# 终端1: 启动 C++ Server（最高速率 1Mbps）
-source devel/setup.bash
+# I2C
+sudo rosrun my_action_pkg i2c_comm_server
+
+# SPI
+sudo rosrun my_action_pkg spi_comm_server
+
+# GPIO 中断
+sudo rosrun my_action_pkg gpio_interrupt_server
+
+# PWM 输出
+sudo rosrun my_action_pkg pwm_output_server
+
+# MCP2515 CAN
+sudo roslaunch mcp2515_can_driver mcp2515_can.launch
+
+# 脉塔 USB-CAN
 sudo rosrun maita_can_comm can_comm_maita_server_cpp
 
-# 终端2: 发送 CAN 帧
-source devel/setup.bash
-python3 src/maita_can_comm/scripts/can_comm_client.py \
-    _can_id:=0x123 \
-    _data:="[0x01, 0x02, 0x03]" \
-    _dlc:=3
+# IMU
+sudo rosrun yb_imu_driver imu_serial_server
 ```
 
-#### 串口通信
+### 3. PC 分布式通信
+
+Jetson 与 PC 通过 WiFi 组成 ROS 分布式系统：
 
 ```bash
-# 终端1: 启动 Server
-sudo roslaunch my_action_pkg serial_comm.launch
+# Jetson（运行 roscore）
+export ROS_IP=<Jetson_IP>
+roscore &
+rosrun distributed_comm jetson_bridge _pub_rate:=50
 
-# 终端2: 发送数据
-python3 src/my_action_pkg/scripts/serial_comm_client.py _data:="Hello"
+# PC（连接到 Jetson 的 roscore）
+export ROS_MASTER_URI=http://<Jetson_IP>:11311
+export ROS_IP=<PC_IP>
+rosrun distributed_comm pc_bridge _pub_rate:=50
 ```
 
-#### I2C 通信
+详细文档：[distributed_comm/README.md](src/distributed_comm/README.md)
+
+### 4. 分布式 YOLO 推理
+
+Jetson 摄像头 → WiFi → PC 推理 → 结果返回 Jetson：
 
 ```bash
-# 终端1: 启动 Server
-sudo roslaunch my_action_pkg i2c_comm.launch
+# Jetson
+roslaunch distributed_comm camera_bridge.launch
 
-# 终端2: 读写 I2C 设备
-python3 src/my_action_pkg/scripts/i2c_comm_client.py \
-    _device_address:=0x50 \
-    _register_address:=0x00 \
-    _data:=0xAA
+# PC（需 CUDA GPU + ultralytics）
+roslaunch distributed_comm pc_yolo.launch device:=cuda:0
 ```
 
-#### GPIO PWM 输出
+详细文档：[distributed_comm/test/README.md](src/distributed_comm/test/README.md)
 
-```bash
-# 终端1: 启动 Server
-sudo roslaunch my_action_pkg pwm_output.launch
+## 硬件引脚映射
 
-# 终端2: 控制 PWM 输出
-python3 src/my_action_pkg/scripts/pwm_output_client.py \
-    _pin_number:=12 \
-    _frequency:=1000 \
-    _duty_cycle:=50 \
-    _duration:=5
-```
+| 接口 | 设备路径 | GPIO 引脚 |
+|------|----------|-----------|
+| 串口 | `/dev/ttyTHS1` | 8 (TX), 10 (RX) |
+| I2C-1 | `/dev/i2c-1` | 3 (SDA), 5 (SCL) |
+| SPI1 | `/dev/spidev0.0` | 19,21,23,24,26 |
+| PWM | BCM 12, 13 | 32, 33 |
 
-## 📚 详细文档
-
-- [脉塔智能 CAN 通信指南](src/maita_can_comm/README.md)
-- [C++ CAN 通信指南](CPP_CAN_GUIDE.md) ⭐ C++ 版本（1Mbps）
-- 串口通信: `src/my_action_pkg/SERIAL_COMM_README.md`
-- I2C 通信: `src/my_action_pkg/I2C_COMM_README.md`
-- GPIO 中断: `src/my_action_pkg/GPIO_INTERRUPT_README.md`
-- GPIO PWM 输出: `src/my_action_pkg/PWM_OUTPUT_README.md`
-- SPI 通信: `src/my_action_pkg/SPI_COMM_README.md`
-
-## 📁 项目结构
+## 项目结构
 
 ```
 action_ws/
 ├── src/
-│   ├── my_action_pkg/          # 基础硬件通信
-│   │   ├── action/             # Action 定义
-│   │   ├── scripts/            # Python 脚本
-│   │   └── launch/             # 启动文件
-│   └── maita_can_comm/         # 脉塔智能 CAN 通信
-│       ├── action/             # Action 定义
-│       ├── scripts/            # Python 脚本
-│       ├── launch/             # 启动文件
-│       └── usbcan_ii_libusb_aarch64/  # 官方驱动
-├── build/                      # 编译输出
-├── devel/                      # 开发环境
-└── install/                    # 安装目录
+│   ├── my_action_pkg/          # 基础硬件 I/O
+│   ├── mcp2515_can_driver/     # SPI CAN 驱动
+│   ├── maita_can_comm/         # USB-CAN 通信
+│   ├── yb_imu_driver/          # IMU 驱动
+│   ├── dcu_driver_pkg/         # EtherCAT 电机驱动
+│   ├── balance_control/        # 平衡控制算法
+│   ├── yolov11_pkg/            # YOLO 本地推理
+│   ├── opencv_cuda_pkg/        # OpenCV 视觉
+│   ├── sim2real_pkg/           # Sim2Real 部署
+│   └── distributed_comm/       # PC-Jetson 分布式通信
+│       ├── src/                # C++ 节点
+│       ├── scripts/            # 工具脚本
+│       ├── test/               # 分布式 YOLO 测试
+│       └── model/              # YOLO 模型文件
+├── build/
+├── devel/
+└── install/
 ```
 
-## 🎯 硬件支持
+## 系统要求
 
-### 脉塔智能 USBCAN-II
-- Vendor ID: 0471
-- Product ID: 1200
-- 设备类型: USBCAN-II (4)
-- 双通道 CAN
-- 波特率: 125K/250K/500K/1M
-- **状态**: ✅ 已验证可用
-
-### 基础硬件接口
-- **串口**: /dev/ttyTHS1 (引脚 8, 10)
-- **I2C**: /dev/i2c-1 (引脚 3, 5)
-- **SPI**: SPI1 (引脚 19, 21, 23, 24, 26)
-- **GPIO**: BCM 编号 (PWM: 12, 13)
-
-## 🔧 系统要求
-
-- Jetson Nano B01
-- ROS Noetic
-- Ubuntu 20.04 (Focal)
+- Jetson Nano B01 (4GB)
+- Ubuntu 20.04 + ROS1 Noetic
 - Python 3.8+
+- PC 端（分布式）：Ubuntu 20.04 + ROS1 Noetic + ultralytics
 
-## 📝 开发说明
+## 注意事项
 
-所有功能包都使用 ROS Action 接口，支持以下模式：
-- Goal/Result/Feedback 模式
-- 异步通信
-- 多客户端支持
+1. 硬件 I/O Server 需要 `sudo` 权限
+2. 脉塔 USB-CAN 需安装 `libusbcan.so` 到 `/lib/`
+3. GPIO 使用 **BCM 编号**
+4. PWM 仅支持 BCM 12 / 13
+5. PC 无法连接 Jetson 时，Jetson 执行 `sudo ufw disable`
+6. PC 编译只拷贝 `distributed_comm` 目录即可，无 Jetson 特有依赖
 
-## ⚠️ 注意事项
-
-1. 所有 Server 都需要 **sudo** 权限
-2. 脉塔智能 CAN 需要先安装 `libusbcan.so` 到 `/lib/` 目录
-3. GPIO 引脚使用 **BCM 编号**
-4. Jetson.GPIO 不支持软件上拉/下拉（需要硬件电阻）
-5. PWM 支持引脚: 12, 13 (BCM)
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 📄 许可证
+## 许可证
 
 MIT License
 
-## 👤 作者
+## 作者
 
-Jetson Nano
+**作者**: Qi Xiao  
+**邮箱**: 2408128687@qq.com
 
-## 📅 更新日期
+## 更新日期
 
-2026-04-02
+2026-05-08

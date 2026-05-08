@@ -14,7 +14,7 @@ MP2515 SPI转CAN 客户端
   source devel/setup.bash
   rosrun mcp2515_can_driver mp2515_can_client.py
   
-作者: Jetson Nano
+作者: Qi Xiao
 日期: 2026-04-08
 """
 

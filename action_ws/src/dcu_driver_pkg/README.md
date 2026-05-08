@@ -667,3 +667,7 @@ WARN: cyclictest was not built with the numa option
 # /dev/cpu_dma_latency set to 0us
 T: 0 (33915) P:99 I:1000 C: 100000 Min:      5 Act:    7 Avg:    7 Max:      98
 jetson@nano:~/Desktop/Jetson_Nano/action_ws$ 
+## 作者
+
+**作者**: Qi Xiao  
+**邮箱**: 2408128687@qq.com

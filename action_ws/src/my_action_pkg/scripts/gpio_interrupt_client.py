@@ -19,7 +19,7 @@ GPIO 中断 Action Client
       _edge_mode:=2 \
       _debounce_ms:=50
   
-作者: Jetson Nano
+作者: Qi Xiao
 日期: 2026-03-30
 """
 

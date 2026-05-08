@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<launch>
+    <!--
+        PC side: YOLOv11 distributed inference
+        roslaunch distributed_comm pc_yolo.launch device:=cuda:0
+    -->
+
+    <arg name="model_path"       default="$(find distributed_comm)/model/yolo11x.pt"/>
+    <arg name="conf"             default="0.5"/>
+    <arg name="iou"              default="0.45"/>
+    <arg name="device"           default="cpu"/>
+    <arg name="imgsz"            default="640"/>
+    <arg name="venv_path"        default=""/>
+    <arg name="ref_height_m"     default="1.7"/>
+    <arg name="ref_px"           default="300"/>
+    <arg name="ref_distance_m"   default="2.0"/>
+
+    <node name="distributed_yolo_server" pkg="distributed_comm"
+          type="distributed_yolo_server.py" output="screen"
+          launch-prefix="$(find distributed_comm)/test/scripts/conda_wrapper.sh">
+        <param name="model_path"      value="$(arg model_path)"/>
+        <param name="conf"            value="$(arg conf)"/>
+        <param name="iou"             value="$(arg iou)"/>
+        <param name="device"          value="$(arg device)"/>
+        <param name="imgsz"           value="$(arg imgsz)"/>
+        <param name="venv_path"       value="$(arg venv_path)"/>
+        <param name="ref_height_m"    value="$(arg ref_height_m)"/>
+        <param name="ref_px"          value="$(arg ref_px)"/>
+        <param name="ref_distance_m"  value="$(arg ref_distance_m)"/>
+    </node>
+</launch>

@@ -16,7 +16,7 @@
   rosrun my_action_pkg serial_comm_client.py _data:="Hello"
   rosrun my_action_pkg serial_comm_client.py _data:="Test Message"
   
-作者: Jetson Nano
+作者: Qi Xiao
 日期: 2026-03-30
 """
 

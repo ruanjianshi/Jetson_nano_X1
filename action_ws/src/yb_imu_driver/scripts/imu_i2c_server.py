@@ -26,7 +26,7 @@ IMU I2C Action Server
   source devel/setup.bash
   sudo rosrun yb_imu_driver imu_i2c_server.py
 
-作者: Jetson Nano
+作者: Qi Xiao
 日期: 2026-04-03
 """
 

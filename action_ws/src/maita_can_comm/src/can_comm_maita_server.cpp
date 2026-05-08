@@ -19,7 +19,7 @@
  *   source devel/setup.bash
  *   rosrun maita_can_comm can_comm_maita_server_cpp
  *
- * 作者: Jetson Nano
+ * 作者: Qi Xiao
  * 日期: 2026-04-02
  */
 

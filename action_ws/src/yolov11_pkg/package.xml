@@ -4,7 +4,7 @@
   <version>1.0.0</version>
   <description>YOLOv11 推理包，用于在 Jetson Nano 上进行目标检测</description>
 
-  <maintainer email="jetson@todo.todo">jetson</maintainer>
+  <maintainer email="2408128687@qq.com">Qi Xiao</maintainer>
 
   <license>MIT</license>
 

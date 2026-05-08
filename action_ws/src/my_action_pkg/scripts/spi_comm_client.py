@@ -19,7 +19,7 @@ SPI 通信 Action Client
       _write_data:=0xAA \
       _read_after_write:=true
   
-作者: Jetson Nano
+作者: Qi Xiao
 日期: 2026-03-31
 """
 

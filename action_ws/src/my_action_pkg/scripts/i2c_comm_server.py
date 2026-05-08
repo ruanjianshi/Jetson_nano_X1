@@ -22,7 +22,7 @@ I2C 通信 Action Server
   source install/setup.bash
   sudo rosrun my_action_pkg i2c_comm_server.py
   
-作者: Jetson Nano
+作者: Qi Xiao
 日期: 2026-03-30
 """
 

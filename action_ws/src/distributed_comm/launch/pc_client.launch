@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- PC client side: pub + sub bidirectional bridge -->
+    <arg name="pub_rate" default="50"  doc="Messages per second"/>
+    <arg name="msg_size" default="256" doc="Payload bytes per message"/>
+
+    <node name="pc_bridge" pkg="distributed_comm" type="pc_bridge" output="screen">
+        <param name="pub_rate" value="$(arg pub_rate)"/>
+        <param name="msg_size" value="$(arg msg_size)"/>
+    </node>
+</launch>

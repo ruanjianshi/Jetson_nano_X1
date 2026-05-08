@@ -18,7 +18,7 @@ CAN 通信 Action Client
     _extended:=false \
     _channel:=0
   
-作者: Jetson Nano
+作者: Qi Xiao
 日期: 2026-04-02
 """
 

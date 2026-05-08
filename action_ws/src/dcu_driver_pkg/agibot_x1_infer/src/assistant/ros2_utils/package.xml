@@ -4,7 +4,7 @@
   <name>ros2_utils</name>
   <version>0.0.0</version>
   <description>X1</description>
-  <maintainer email="developer@zhiyuan-robot.com"> </maintainer>
+  <maintainer email="2408128687@qq.com">Qi Xiao</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

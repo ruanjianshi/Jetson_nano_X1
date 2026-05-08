@@ -450,3 +450,7 @@ SQUARE X:320 Y:240 D:45.2cm A:56200 V:4 C:0.78 FPS:29.8
 ## 许可证
 
 MIT License
+## 作者
+
+**作者**: Qi Xiao  
+**邮箱**: 2408128687@qq.com

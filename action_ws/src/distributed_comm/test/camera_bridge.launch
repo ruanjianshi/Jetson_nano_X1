@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<launch>
+    <!--
+        Jetson Nano side: camera capture + display
+        roslaunch distributed_comm camera_bridge.launch width:=640 height:=480 fps:=15 quality:=70
+    -->
+
+    <arg name="width"        default="640"/>
+    <arg name="height"       default="480"/>
+    <arg name="fps"          default="15"/>
+    <arg name="quality"      default="70"/>
+    <arg name="camera_index" default="0"/>
+    <arg name="flip_method"  default="0"/>
+    <arg name="show_gui"     default="true"/>
+
+    <!-- Camera publisher -->
+    <node name="camera_publisher" pkg="distributed_comm" type="camera_publisher.py" output="screen">
+        <param name="width"        value="$(arg width)"/>
+        <param name="height"       value="$(arg height)"/>
+        <param name="fps"          value="$(arg fps)"/>
+        <param name="quality"      value="$(arg quality)"/>
+        <param name="camera_index" value="$(arg camera_index)"/>
+        <param name="flip_method"  value="$(arg flip_method)"/>
+    </node>
+
+    <!-- Result display -->
+    <node name="jetson_display" pkg="distributed_comm" type="jetson_display.py" output="screen">
+        <param name="show_gui" value="$(arg show_gui)"/>
+    </node>
+</launch>

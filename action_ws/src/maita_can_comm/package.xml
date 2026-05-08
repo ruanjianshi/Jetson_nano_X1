@@ -4,7 +4,7 @@
   <version>1.0.0</version>
   <description>脉塔智能 USB转CAN模块V4 ROS功能包 - 支持CAN总线通信、数据收发、过滤等功能</description>
 
-  <maintainer email="jetson@todo.todo">jetson</maintainer>
+  <maintainer email="2408128687@qq.com">Qi Xiao</maintainer>
   <author email="jetson@todo.todo">jetson</author>
 
   <license>MIT</license>

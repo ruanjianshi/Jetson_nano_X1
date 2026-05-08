@@ -342,3 +342,8 @@ rostopic pub /imu_serial/data sensor_msgs/Imu "{orientation: {x: 0, y: 0, z: 0, 
 |------|----------|
 | 2026-05-06 | 初始版本 |
 | 2026-05-07 | URDF匹配: 运动学关节轴修正 (hip_pitch/knee/wheel 绕Y轴), 几何参数从URDF提取, 质量/限幅修正, 关节命名统一为 left_joint_*/right_joint_*, Action字段重构 (command/algorithm), 算法output统一8维, 各算法实现精度修正 |
+
+## 作者
+
+**作者**: Qi Xiao  
+**邮箱**: 2408128687@qq.com

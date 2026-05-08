@@ -15,7 +15,7 @@
   source install/setup.bash
   sudo roslaunch my_action_pkg serial_comm.launch
   
-作者: Jetson Nano
+作者: Qi Xiao
 日期: 2026-03-30
 """
 

@@ -19,7 +19,7 @@ GPIO PWM 输出 Action Client
       _duty_cycle:=50 \
       _duration:=5
   
-作者: Jetson Nano
+作者: Qi Xiao
 日期: 2026-03-31
 """
 

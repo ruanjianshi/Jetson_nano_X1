@@ -22,7 +22,7 @@ CAN 通信 Action Server (脉塔智能 USBCAN-II)
   source install/setup.bash
   sudo python3 scripts/can_comm_maita_server.py
   
-作者: Jetson Nano
+作者: Qi Xiao
 日期: 2026-04-02
 """
 

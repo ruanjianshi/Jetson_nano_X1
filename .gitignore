@@ -40,3 +40,5 @@ ethercat/
 
 # Embedded git repos (not submodules)
 action_ws/YbImuLib/.git/
+action_ws/src/distributed_comm/model/*.pt
+action_ws/src/distributed_comm/model/*.pt

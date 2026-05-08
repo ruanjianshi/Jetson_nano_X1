@@ -13,7 +13,7 @@ IMU Serial Action Client 示例
   source devel/setup.bash
   python3 imu_serial_client.py
 
-作者: Jetson Nano
+作者: Qi Xiao
 日期: 2026-04-03
 """
 

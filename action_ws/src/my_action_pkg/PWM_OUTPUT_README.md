@@ -514,6 +514,6 @@ python3 pwm_output_client.py _pin_number:=12 _frequency:=1000 _duty_cycle:=0 _du
 
 ---
 
-**作者**: Jetson Nano Developer  
+**作者**: Qi Xiao  
 **日期**: 2026-03-31  
 **版本**: 1.0.0
