@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+    <!--
+        Jetson Nano side: controller node (receives PC commands, publishes telemetry)
+        roslaunch distributed_comm jetson_control.launch telemetry_rate:=2
+    -->
+    <arg name="telemetry_rate" default="2"/>
+    <arg name="simulate_hw"    default="true"/>
+
+    <node name="jetson_controller" pkg="distributed_comm" type="jetson_controller" output="screen">
+        <param name="telemetry_rate" value="$(arg telemetry_rate)"/>
+        <param name="simulate_hw"    value="$(arg simulate_hw)"/>
+    </node>
+</launch>

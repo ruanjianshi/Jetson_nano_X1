@@ -425,7 +425,14 @@ rosrun distributed_comm jetson_bridge _pub_rate:=200
 # PC: 自动找到极限
 rosrun distributed_comm rate_tester _start_hz:=50 _step_hz:=50 _interval_s:=5
 ```
-实测结果: WiFi 下稳定 210-250 Hz，延迟 ~76ms。
+实测结果:
+
+| 网络 | 最大吞吐量 | 延迟 | 带宽 |
+|------|-----------|------|------|
+| LAN 局域网 | ~250 Hz | ~76ms | ~410 kbps |
+| **ZeroTier 内网穿透** | **~450 Hz** | **~55ms** | **~922 kbps** |
+
+> ZeroTier 同网段走直连并优化路由，实测比直接局域网更稳定。
 
 **详细文档**: `action_ws/src/distributed_comm/README.md`
 

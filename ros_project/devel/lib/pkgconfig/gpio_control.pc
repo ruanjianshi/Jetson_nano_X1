@@ -1,0 +1,8 @@
+prefix=/home/jetson/Desktop/Jetson_Nano/ROS_Project/devel
+
+Name: gpio_control
+Description: Description of gpio_control
+Version: 1.0.0
+Cflags: -I/home/jetson/Desktop/Jetson_Nano/ROS_Project/devel/include -I/home/jetson/Desktop/Jetson_Nano/ROS_Project/src/gpio_control/include
+Libs: -L${prefix}/lib -lgpio_control_lib
+Requires: rospy std_msgs message_runtime

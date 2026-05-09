@@ -99,24 +99,29 @@ rosrun distributed_comm jetson_bridge _pub_rate:=200
 rosrun distributed_comm rate_tester _start_hz:=50 _step_hz:=50 _interval_s:=5
 ```
 
-输出示例：
+输出示例（ZeroTier 内网穿透）：
 ```
 ============================================
   WiFi Throughput Rate Test
   start=50 Hz  step=50  interval=5s
 ============================================
-[ 50 Hz] recv=50  ratio=100%  lat=12.3 ms
-[100 Hz] recv=100  ratio=100%  lat=18.1 ms
-[150 Hz] recv=149  ratio= 99%  lat=35.6 ms
-[200 Hz] recv=199  ratio=100%  lat=52.2 ms
-[250 Hz] recv=220  ratio= 88%  lat=98.7 ms
-[300 Hz] recv=230  ratio= 77%  lat=156.3 ms
+[ 50 Hz] recv=50  ratio=100%  lat=55.0 ms
+[100 Hz] recv=100  ratio=100%  lat=56.1 ms
+[200 Hz] recv=200  ratio=100%  lat=56.4 ms
+[300 Hz] recv=300  ratio=100%  lat=55.7 ms
+[400 Hz] recv=400  ratio=100%  lat=55.8 ms
+[450 Hz] recv=400  ratio= 89%  lat=55.6 ms
 ============================================
   MAX STABLE THROUGHPUT
-  Rate: 200 Hz  |  200 msgs/s
-  Bandwidth: 410 kbps  |  0.41 Mbps
+  Rate:    450 Hz  |  450 msgs/s
+  Bandwidth: 922 kbps  |  0.92 Mbps
 ============================================
 ```
+
+| 网络 | 最大吞吐量 | 延迟 | 带宽 |
+|------|-----------|------|------|
+| LAN 局域网 | ~250 Hz | ~76ms | ~410 kbps |
+| ZeroTier 内网穿透 | ~450 Hz | ~55ms | ~922 kbps |
 
 ## Launch 文件
 

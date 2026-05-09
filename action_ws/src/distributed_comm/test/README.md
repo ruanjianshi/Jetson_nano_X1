@@ -78,6 +78,7 @@ roslaunch distributed_comm pc_yolo.launch
 # GPU 推理（如果有 NVIDIA GPU）
 roslaunch distributed_comm pc_yolo.launch device:=cuda:0 model_path:=./yolo11n.pt
 
+roslaunch distributed_comm pc_yolo.launch device:=cuda:0 model_path:=$(rospack find distributed_comm)/model/yolo11l.pt
 # 提高分辨率
 roslaunch distributed_comm pc_yolo.launch imgsz:=640 conf:=0.3
 ```

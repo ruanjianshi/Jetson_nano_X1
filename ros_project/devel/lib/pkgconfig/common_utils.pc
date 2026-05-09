@@ -1,0 +1,8 @@
+prefix=/home/jetson/Desktop/Jetson_Nano/ROS_Project/devel
+
+Name: common_utils
+Description: Description of common_utils
+Version: 1.0.0
+Cflags: -I/home/jetson/Desktop/Jetson_Nano/ROS_Project/src/common_utils/include
+Libs: -L${prefix}/lib -lcommon_utils_lib
+Requires: rospy

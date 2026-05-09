@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<launch>
+    <!--
+        Test: run both controller (Jetson) and test command script
+        roslaunch distributed_comm control_test.launch mode:=auto
+    -->
+    <arg name="mode"            default="auto"/>
+    <arg name="telemetry_rate"  default="2"/>
+    <arg name="simulate_hw"     default="true"/>
+
+    <!-- Jetson controller -->
+    <node name="jetson_controller" pkg="distributed_comm" type="jetson_controller" output="screen">
+        <param name="telemetry_rate" value="$(arg telemetry_rate)"/>
+        <param name="simulate_hw"    value="$(arg simulate_hw)"/>
+    </node>
+
+    <!-- Test command sender -->
+    <node name="test_commands" pkg="distributed_comm" type="test_commands.py" output="screen">
+        <param name="mode" value="$(arg mode)"/>
+    </node>
+</launch>

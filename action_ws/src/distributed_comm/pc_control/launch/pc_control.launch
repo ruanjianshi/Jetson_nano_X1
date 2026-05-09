@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+    <!--
+        PC side: QT control UI
+        Requires: DISPLAY set, ROS_MASTER_URI pointing to Jetson
+        roslaunch distributed_comm pc_control.launch
+    -->
+    <!-- qt_ros node is built separately; this launch starts the compiled binary -->
+    <node name="pc_control_ui" pkg="distributed_comm" type="pc_control_ui" output="screen"/>
+</launch>

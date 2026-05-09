@@ -1,172 +1,194 @@
 #!/bin/bash
 # ============================================================================
-#  ZeroTier 分布式 ROS 网络配置脚本
-#  支持局域网 + 内网穿透，自动检测当前机器并配置 ROS 环境变量
+#  ROS 分布式网络切换脚本 — 局域网 / ZeroTier 内网穿透 一键切换
+#  作者: Qi Xiao  邮箱: 2408128687@qq.com
 # ============================================================================
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="$SCRIPT_DIR/zt_config"
-
-# 默认 ZeroTier Network ID
-ZT_NETWORK_ID="${ZT_NETWORK_ID:-f3797ba7a828a818}"
+ZT_NETWORK_ID="f3797ba7a828a818"
 
 [ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE"
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
-# 检测当前机器
 HOSTNAME="$(hostname)"
 if echo "$HOSTNAME" | grep -qi "nano\|jetson\|tegra"; then
     SIDE="jetson"
+    LAN_IP="${LAN_IP:-10.88.168.44}"
+    ZT_IP="${ZT_IP:-10.9.225.7}"
 else
     SIDE="pc"
+    LAN_IP="${LAN_IP:-10.88.168.60}"
+    ZT_IP="${ZT_IP:-10.9.225.55}"
+    JETSON_ZT_IP="${JETSON_ZT_IP:-10.9.225.7}"
+    JETSON_LAN_IP="${JETSON_LAN_IP:-10.88.168.44}"
 fi
-
-check_zt() {
-    if ! command -v zerotier-cli &>/dev/null; then
-        echo -e "${RED}[ERROR] zerotier-cli not found${NC}"
-        echo "Install: curl -s https://install.zerotier.com | sudo bash"
-        return 1
-    fi
-    return 0
-}
 
 get_zt_ip() {
     sudo zerotier-cli listnetworks 2>/dev/null \
         | awk -v nid="$ZT_NETWORK_ID" '$0 ~ nid {split($NF,a,"/"); print a[1]}'
 }
 
-do_install() {
-    echo -e "${YELLOW}Installing ZeroTier...${NC}"
-    curl -s https://install.zerotier.com | sudo bash
-    echo -e "${GREEN}Done.${NC}"
-    echo "Next: ./$(basename "$0") join"
+do_config() {
+    echo ""
+    echo -e "Machine: ${BLUE}$SIDE${NC}"
+    echo "  LAN IP: $LAN_IP"
+    echo "  ZT  IP: $ZT_IP ($(get_zt_ip 2>/dev/null || echo 'offline'))"
+    echo ""
+
+    read -p "LAN IP [$LAN_IP]: " v; [ -n "$v" ] && LAN_IP="$v"
+    read -p "ZT  IP [$ZT_IP]: "  v; [ -n "$v" ] && ZT_IP="$v"
+
+    if [ "$SIDE" = "pc" ]; then
+        read -p "Jetson LAN IP [$JETSON_LAN_IP]: " v; [ -n "$v" ] && JETSON_LAN_IP="$v"
+        read -p "Jetson ZT  IP [$JETSON_ZT_IP]: "  v; [ -n "$v" ] && JETSON_ZT_IP="$v"
+        cat > "$CONFIG_FILE" << EOF
+LAN_IP="$LAN_IP"
+ZT_IP="$ZT_IP"
+JETSON_LAN_IP="$JETSON_LAN_IP"
+JETSON_ZT_IP="$JETSON_ZT_IP"
+EOF
+    else
+        cat > "$CONFIG_FILE" << EOF
+LAN_IP="$LAN_IP"
+ZT_IP="$ZT_IP"
+EOF
+    fi
+
+    echo -e "${GREEN}Config saved.${NC}"
+    echo ""
+    echo "Next: ./$(basename "$0") switch lan    or    ./$(basename "$0") switch zt"
 }
 
-do_join() {
-    check_zt || return 1
-    echo -e "${YELLOW}Joining network: $ZT_NETWORK_ID${NC}"
-    sudo zerotier-cli join "$ZT_NETWORK_ID"
-    echo -e "${GREEN}Joined. Wait a moment...${NC}"
-    sleep 3
+do_switch() {
+    local mode="${1:-}"
 
-    ZT_IP=$(get_zt_ip)
-    if [ -n "$ZT_IP" ]; then
-        echo -e "${GREEN}ZeroTier IP: $ZT_IP${NC}"
-        echo ""
-        echo -e "${YELLOW}IMPORTANT: Go to https://my.zerotier.com/network/$ZT_NETWORK_ID${NC}"
-        echo "  -> Find this device -> check the Auth box"
+    echo ""
+    if [ "$mode" = "lan" ]; then
+        if [ "$SIDE" = "jetson" ]; then
+            MASTER="http://${LAN_IP}:11311"
+            MY_IP="$LAN_IP"
+        else
+            MASTER="http://${JETSON_LAN_IP}:11311"
+            MY_IP="$LAN_IP"
+        fi
+    elif [ "$mode" = "zt" ]; then
+        if [ "$SIDE" = "jetson" ]; then
+            MASTER="http://${ZT_IP}:11311"
+            MY_IP="$ZT_IP"
+        else
+            MASTER="http://${JETSON_ZT_IP}:11311"
+            MY_IP="$ZT_IP"
+        fi
     else
-        echo -e "${RED}[WARN] Not authorized yet.${NC}"
-        echo "  Go to https://my.zerotier.com/network/$ZT_NETWORK_ID and authorize this device."
+        echo -e "${RED}Usage: ./$(basename "$0") switch [lan|zt]${NC}"
+        return 1
+    fi
+
+    # 删除 ~/.bashrc 中旧的 ROS 网络配置行
+    sed -i '/^export ROS_MASTER_URI=/d; /^export ROS_IP=/d; /^export ROS_HOSTNAME=/d' ~/.bashrc
+
+    # 追加新的配置到末尾
+    cat >> ~/.bashrc << EOF
+export ROS_MASTER_URI=$MASTER
+export ROS_IP=$MY_IP
+export ROS_HOSTNAME=$MY_IP
+EOF
+
+    # 立即生效当前终端
+    export ROS_MASTER_URI="$MASTER"
+    export ROS_IP="$MY_IP"
+    export ROS_HOSTNAME="$MY_IP"
+
+    echo -e "${GREEN}Switched to ${BLUE}$mode${GREEN} mode${NC}"
+    echo "  ROS_MASTER_URI=$ROS_MASTER_URI"
+    echo "  ROS_IP=$ROS_IP"
+
+    # 如果脚本是被 source 执行的，自动生效；否则提示用户 source
+    if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+        source ~/.bashrc
+        echo -e "${GREEN}Current terminal updated.${NC}"
+    else
+        echo ""
+        echo -e "${YELLOW}Run: source ~/.bashrc  (or open new terminal)${NC}"
     fi
 }
 
 do_status() {
-    check_zt || return 1
-    sudo zerotier-cli listnetworks
-
-    ZT_IP=$(get_zt_ip)
-    if [ -n "$ZT_IP" ]; then
-        echo ""
-        ROS_MASTER_PORT=11311
-        if nc -z -w2 "$ZT_IP" "$ROS_MASTER_PORT" 2>/dev/null; then
-            echo -e "${GREEN}ROS port 11311 is reachable${NC}"
-        else
-            echo -e "${YELLOW}ROS port 11311 not reachable (roscore not running?)${NC}"
-        fi
-    fi
-}
-
-do_config() {
     echo ""
-    echo "Current: $SIDE"
+    echo -e "Machine: ${BLUE}$SIDE${NC}"
+    echo -e "ZeroTier: $(sudo zerotier-cli listnetworks 2>/dev/null | grep "$ZT_NETWORK_ID" | awk '{print $5" "$9}' || echo 'offline')"
+    echo ""
+    echo -e "Current ROS config:"
     echo "  ROS_MASTER_URI=$ROS_MASTER_URI"
     echo "  ROS_IP=$ROS_IP"
     echo ""
 
-    ZT_IP=$(get_zt_ip)
-    if [ -n "$ZT_IP" ]; then
-        echo "Detected ZeroTier IP: $ZT_IP"
-        echo ""
-    fi
-
-    if [ "$SIDE" = "jetson" ]; then
-        read -p "Your ZeroTier IP [$ZT_IP]: " ip; [ -n "$ip" ] && ZT_IP="$ip"
-
-        ROS_MASTER_URI="http://${ZT_IP}:11311"
-        ROS_IP="$ZT_IP"
-        ROS_HOSTNAME="$ZT_IP"
-
-        EXPORT_STR="export ROS_MASTER_URI=$ROS_MASTER_URI
-export ROS_IP=$ROS_IP
-export ROS_HOSTNAME=$ROS_HOSTNAME"
-
-        echo "$EXPORT_STR" >> ~/.bashrc
-        echo -e "${GREEN}Appended to ~/.bashrc:${NC}"
-        echo "$EXPORT_STR"
-        echo ""
-        echo "Next: source ~/.bashrc && roscore &"
+    if echo "$ROS_MASTER_URI" | grep -q "10\.9\.225"; then
+        echo -e "Mode: ${BLUE}ZeroTier 内网穿透${NC}"
     else
-        read -p "Jetson ZeroTier IP [$JETSON_ZT_IP]: " jet_ip
-        [ -n "$jet_ip" ] && JETSON_ZT_IP="$jet_ip"
-
-        read -p "Your ZeroTier IP [$ZT_IP]: " my_ip
-        [ -n "$my_ip" ] && ZT_IP="$my_ip"
-
-        ROS_MASTER_URI="http://${JETSON_ZT_IP}:11311"
-        ROS_IP="$ZT_IP"
-        ROS_HOSTNAME="$ZT_IP"
-
-        EXPORT_STR="export ROS_MASTER_URI=$ROS_MASTER_URI
-export ROS_IP=$ROS_IP
-export ROS_HOSTNAME=$ROS_HOSTNAME"
-
-        echo "$EXPORT_STR" >> ~/.bashrc
-        echo -e "${GREEN}Appended to ~/.bashrc:${NC}"
-        echo "$EXPORT_STR"
-        echo ""
-        echo "    source ~/.bashrc && rosrun distributed_comm pc_bridge _pub_rate:=50"
+        echo -e "Mode: ${GREEN}局域网${NC}"
     fi
+}
 
-    cat > "$CONFIG_FILE" << EOF
-ZT_NETWORK_ID="$ZT_NETWORK_ID"
-JETSON_ZT_IP="$ZT_IP"
-EOF
-    echo -e "${GREEN}Config saved to $CONFIG_FILE${NC}"
+do_install() {
+    curl -s https://install.zerotier.com | sudo bash
+    echo -e "${GREEN}Done. Next: ./$(basename "$0") join${NC}"
+}
+
+do_join() {
+    command -v zerotier-cli &>/dev/null || { echo "Install first: ./$(basename "$0") install"; return 1; }
+    sudo zerotier-cli join "$ZT_NETWORK_ID"
+    sleep 2
+    ZT_IP=$(get_zt_ip)
+    echo -e "${GREEN}Joined. ZT IP: $ZT_IP${NC}"
+    echo -e "${YELLOW}Go to https://my.zerotier.com/network/$ZT_NETWORK_ID -> Auth${NC}"
 }
 
 do_test() {
-    echo -e "${YELLOW}Pinging Jetson via ZeroTier...${NC}"
-    ping -c 3 "$JETSON_ZT_IP" 2>/dev/null && echo -e "${GREEN}OK${NC}" || echo -e "${RED}FAIL${NC}"
+    local target
+    if [ "$SIDE" = "jetson" ]; then
+        target="${PC_IP:-10.88.168.60}"
+    else
+        target="${JETSON_LAN_IP:-10.88.168.44}"
+    fi
+    echo "Pinging $target via current network..."
+    ping -c 3 "$target" && echo -e "${GREEN}OK${NC}" || echo -e "${RED}FAIL${NC}"
 }
 
 case "${1:-}" in
+    config)  do_config ;;
+    switch)  do_switch "${2:-}" ;;
+    status)  do_status ;;
     install) do_install ;;
     join)    do_join ;;
-    status)  do_status ;;
-    config)  do_config ;;
     test)    do_test ;;
     *)
         echo ""
-        echo "ZeroTier ROS Network Setup (current: $SIDE)"
+        echo "ROS Network Switch — LAN / ZeroTier ($SIDE)"
         echo ""
-        echo "  ./zerotier_setup.sh install    # 安装 ZeroTier (两台都要)"
-        echo "  ./zerotier_setup.sh join       # 加入网络 (两台都要)"
-        echo "  ./zerotier_setup.sh status     # 查看连接状态"
-        echo "  ./zerotier_setup.sh config     # 配置 ROS 环境变量到 ~/.bashrc"
-        echo "  ./zerotier_setup.sh test       # 测试 ZeroTier 连通性"
+        echo "  config                      Configure LAN and ZT IPs"
+        echo " ROS Network Switch ($SIDE)"
+        echo ""
+        echo "  switch lan    # LAN mode"
+        echo "  switch zt     # ZeroTier mode"
+        echo ""
+        echo "Tip: source the script for auto-refresh:"
+        echo "  . ./zerotier_setup.sh switch zt"
+        echo "  status                      Show current mode"
+        echo "  install / join              ZeroTier setup"
+        echo "  test                        Ping test"
         echo ""
         echo "Quick start:"
-        echo "  1. install -> join (both machines)"
-        echo "  2. Authorize at https://my.zerotier.com"
-        echo "  3. config (Jetson first, then PC)"
-        echo "  4. Jetson: roscore &"
-        echo "  5. PC: rosrun distributed_comm pc_bridge _pub_rate:=50"
+        echo "  1. config              (configure IPs)"
+        echo "  2. switch zt           (switch to ZeroTier, auto-source)"
+        echo "  3. switch lan          (switch back to LAN)"
         ;;
 esac

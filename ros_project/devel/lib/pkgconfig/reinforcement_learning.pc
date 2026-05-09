@@ -1,0 +1,8 @@
+prefix=/home/jetson/Desktop/Jetson_Nano/ROS_Project/devel
+
+Name: reinforcement_learning
+Description: Description of reinforcement_learning
+Version: 1.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: rospy std_msgs sensor_msgs
